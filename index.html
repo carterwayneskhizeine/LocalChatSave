@@ -3,54 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>本地对话保存系统</title>
+    <title>LocalChat</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="app-container">
-        <!-- 侧边栏 -->
-        <aside class="sidebar">
+        <div class="sidebar">
             <div class="sidebar-header">
-                <div class="theme-switch">
-                    <button id="themeToggleBtn" class="theme-toggle-btn">
-                        <span class="theme-icon">🌞</span>
-                        <span class="theme-text">切换主题</span>
-                    </button>
-                </div>
+                <button id="settingsBtn" class="settings-btn">
+                    <span class="settings-icon">⚙️</span>
+                    <span>设置</span>
+                </button>
                 <button id="newChatBtn" class="new-chat-btn">新建对话</button>
             </div>
-            <div class="conversations-list" id="conversationsList">
-                <!-- 对话列表将通过JavaScript动态添加 -->
-            </div>
-        </aside>
-
-        <!-- 主要内容区 -->
-        <main class="main-content">
-            <div class="chat-container" id="chatContainer">
-                <div class="messages" id="messagesContainer">
-                    <!-- 消息内容将通过JavaScript动态添加 -->
-                </div>
-                
+            <div id="conversationsList" class="conversations-list"></div>
+        </div>
+        <div class="main-content">
+            <button class="sidebar-toggle-btn" id="sidebarToggleBtn">⛶</button>
+            <button class="expand-btn" id="expandBtn">⛶</button>
+            <div class="chat-container">
+                <div id="messagesContainer" class="messages"></div>
                 <div class="input-area">
-                    <!-- 添加文件预览区域 -->
-                    <div class="file-preview-area" id="filePreviewArea">
-                        <!-- 选择的文件将在这里预览 -->
-                    </div>
-                    
                     <div class="input-container">
+                        <div id="filePreviewArea" class="file-preview-area"></div>
                         <textarea id="messageInput" placeholder="输入消息..."></textarea>
                         <div class="button-group">
-                            <button id="fileButton" class="file-btn">
-                                <span>选择文件</span>
+                            <button class="file-btn">
                                 <input type="file" id="fileInput" multiple>
+                                <span class="file-btn-text">选择文件</span>
                             </button>
                             <button id="sendButton" class="send-btn">发送</button>
                         </div>
                     </div>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
+
+    <!-- 设置窗口 -->
+    <div id="settingsModal" class="settings-modal">
+        <div class="settings-window">
+            <div class="settings-header">
+                <div class="settings-title">设置</div>
+                <button class="settings-close" id="settingsCloseBtn">×</button>
+            </div>
+            <div class="settings-content">
+                <div class="settings-section">
+                    <div class="settings-section-title">常规设置</div>
+                    <div class="settings-item">
+                        <span class="settings-item-label">主题</span>
+                        <button id="themeToggleBtn" class="theme-toggle-btn">切换主题</button>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-item-label">语言</span>
+                        <button id="langToggleBtn" class="lang-toggle-btn">EN</button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">存储设置</div>
+                    <div class="settings-item">
+                        <span class="settings-item-label">存储位置</span>
+                        <div id="selectDirContainer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html> 

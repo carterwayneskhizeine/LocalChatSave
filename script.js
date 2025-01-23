@@ -4,28 +4,173 @@ let conversations = [];
 let directoryHandle = null;
 const CONFIG_FILE = 'chat_config.json';
 let isDarkMode = false;
+let isEnglish = false; // 添加语言设置变量
 
 // 初始化应用
 async function initApp() {
     try {
-        // 添加选择存储位置按钮
+        // 添加选择存储位置按钮和下拉菜单
+        const selectDirContainer = document.getElementById('selectDirContainer');
+        
         const selectDirBtn = document.createElement('button');
         selectDirBtn.textContent = '选择存储位置';
         selectDirBtn.className = 'select-dir-btn';
-        selectDirBtn.onclick = requestDirectoryPermission;
-        document.querySelector('.sidebar-header').insertBefore(selectDirBtn, document.getElementById('newChatBtn'));
+        selectDirBtn.onclick = toggleDirDropdown;
+        
+        const dropdown = document.createElement('div');
+        dropdown.className = 'select-dir-dropdown';
+        
+        // 默认位置选项
+        const defaultDirItem = document.createElement('div');
+        defaultDirItem.className = 'select-dir-item';
+        defaultDirItem.innerHTML = `
+            <span class="select-dir-item-icon">📁</span>
+            <span>C:\\LocalChat</span>
+            <span class="select-dir-item-copy" title="复制路径">📋</span>
+        `;
+        
+        // 添加点击事件
+        defaultDirItem.onclick = async (e) => {
+            // 如果点击的是复制按钮
+            if (e.target.classList.contains('select-dir-item-copy')) {
+                e.stopPropagation();
+                await navigator.clipboard.writeText('C:\\LocalChat');
+                // 显示复制成功提示
+                const originalText = e.target.textContent;
+                e.target.textContent = '✓';
+                setTimeout(() => {
+                    e.target.textContent = '📋';
+                }, 1000);
+                return;
+            }
+            
+            // 如果点击的是路径文本
+            if (e.target.textContent === 'C:\\LocalChat') {
+                e.stopPropagation();
+                await navigator.clipboard.writeText('C:\\LocalChat');
+                // 显示临时提示
+                const tempSpan = document.createElement('span');
+                tempSpan.textContent = ' (已复制)';
+                tempSpan.style.color = 'var(--secondary-color)';
+                e.target.appendChild(tempSpan);
+                setTimeout(() => {
+                    tempSpan.remove();
+                }, 1000);
+                return;
+            }
+            
+            // 关闭下拉菜单
+            dropdown.classList.remove('show');
+            // 直接尝试打开C:\LocalChat
+            try {
+                const handle = await window.showDirectoryPicker({
+                    mode: 'readwrite'
+                });
+                // 检查是否选择了正确的目录
+                const dirName = handle.name;
+                if (dirName.toLowerCase() === 'localchat' || confirm('您选择的不是 LocalChat 文件夹，是否继续使用该文件夹？')) {
+                    directoryHandle = handle;
+                    await restoreLastDirectory();
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('选择目录失败:', error);
+                    alert('选择目录失败，请重试');
+                }
+            }
+        };
+        
+        // 其他位置选项
+        const otherDirItem = document.createElement('div');
+        otherDirItem.className = 'select-dir-item';
+        otherDirItem.innerHTML = `
+            <span class="select-dir-item-icon">📂</span>
+            <span>其它位置...</span>
+        `;
+        otherDirItem.onclick = () => selectCustomDirectory();
+        
+        dropdown.appendChild(defaultDirItem);
+        dropdown.appendChild(otherDirItem);
+        
+        selectDirContainer.appendChild(selectDirBtn);
+        selectDirContainer.appendChild(dropdown);
 
         // 添加文件选择事件监听
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
 
-        // 添加主题切换事件监听
-        document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
+        // 点击其他地方关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            if (!selectDirContainer.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
 
-        // 恢复主题设置
-        restoreTheme();
+        // 添加设置按钮点击事件
+        document.getElementById('settingsBtn').onclick = toggleSettings;
+
+        // 添加设置关闭按钮点击事件
+        document.getElementById('settingsCloseBtn').onclick = toggleSettings;
+
+        // 添加主题切换按钮点击事件
+        document.getElementById('themeToggleBtn').onclick = toggleTheme;
+
+        // 添加语言切换按钮点击事件
+        document.getElementById('langToggleBtn').onclick = toggleLanguage;
+
+        // ESC键关闭设置窗口
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('settingsModal');
+                if (modal.classList.contains('show')) {
+                    toggleSettings();
+                }
+            }
+        });
+
+        // 添加放大缩小按钮点击事件
+        const expandBtn = document.getElementById('expandBtn');
+        const chatContainer = document.querySelector('.chat-container');
+        let isExpanded = false;
+
+        expandBtn.onclick = () => {
+            isExpanded = !isExpanded;
+            chatContainer.classList.toggle('expanded');
+            expandBtn.textContent = isExpanded ? '⧉' : '⛶';
+            expandBtn.title = isExpanded ? '还原' : '放大';
+        };
+
+        // 添加侧边栏切换按钮点击事件
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        let isSidebarHidden = false;
+
+        sidebarToggleBtn.onclick = () => {
+            isSidebarHidden = !isSidebarHidden;
+            sidebar.classList.toggle('hidden');
+            mainContent.classList.toggle('full');
+            sidebarToggleBtn.textContent = isSidebarHidden ? '⧉' : '⛶';
+            sidebarToggleBtn.title = isSidebarHidden ? '显示侧边栏' : '隐藏侧边栏';
+            // 保存侧边栏状态
+            localStorage.setItem('sidebarHidden', isSidebarHidden);
+        };
+
+        // 恢复侧边栏状态
+        const savedSidebarState = localStorage.getItem('sidebarHidden');
+        if (savedSidebarState === 'true') {
+            isSidebarHidden = true;
+            sidebar.classList.add('hidden');
+            mainContent.classList.add('full');
+            sidebarToggleBtn.textContent = '⧉';
+            sidebarToggleBtn.title = '显示侧边栏';
+        }
 
         // 尝试恢复上次的存储位置
         await restoreLastDirectory();
+
+        // 恢复主题和语言设置
+        restoreTheme();
+        restoreLanguage();
     } catch (error) {
         console.error('初始化失败:', error);
     }
@@ -40,13 +185,10 @@ function toggleTheme() {
 
 // 应用主题
 function applyTheme() {
-    const themeIcon = document.querySelector('.theme-icon');
     if (isDarkMode) {
         document.documentElement.setAttribute('data-theme', 'dark');
-        themeIcon.textContent = '🌙';
     } else {
         document.documentElement.removeAttribute('data-theme');
-        themeIcon.textContent = '🌞';
     }
 }
 
@@ -71,7 +213,8 @@ async function saveConfig() {
             lastAccessed: new Date().toISOString(),
             conversations: conversations.map(c => ({
                 id: c.id,
-                title: c.title
+                title: c.title,
+                order: conversations.indexOf(c) // 添加顺序信息
             }))
         };
         
@@ -119,32 +262,26 @@ async function restoreLastDirectory() {
     }
 }
 
-// 请求目录访问权限
-async function requestDirectoryPermission() {
+// 切换存储位置下拉菜单
+function toggleDirDropdown(e) {
+    e.stopPropagation();
+    const dropdown = document.querySelector('.select-dir-dropdown');
+    dropdown.classList.toggle('show');
+}
+
+// 选择自定义目录
+async function selectCustomDirectory() {
     try {
         directoryHandle = await window.showDirectoryPicker({
             mode: 'readwrite'
         });
+        document.querySelector('.select-dir-dropdown').classList.remove('show');
         await restoreLastDirectory();
-        return true;
     } catch (error) {
-        console.error('获取目录权限失败:', error);
-        alert('请选择一个文件夹来保存对话内容。如果您取消了选择，部分功能将无法使用。');
-        return false;
-    }
-}
-
-// 确保有目录访问权限
-async function ensureDirectoryPermission() {
-    if (!directoryHandle) {
-        return await requestDirectoryPermission();
-    }
-    try {
-        // 验证权限是否仍然有效
-        await directoryHandle.requestPermission({ mode: 'readwrite' });
-        return true;
-    } catch (error) {
-        return await requestDirectoryPermission();
+        if (error.name !== 'AbortError') {
+            console.error('选择目录失败:', error);
+            alert('选择目录失败，请重试');
+        }
     }
 }
 
@@ -162,10 +299,35 @@ async function loadConversations() {
                 conversations.push(conversation);
             }
         }
+        
+        // 读取配置文件中的顺序信息
+        const config = await loadConfig();
+        if (config && config.conversations) {
+            // 根据配置文件中的顺序排序
+            conversations.sort((a, b) => {
+                const orderA = config.conversations.find(c => c.id === a.id)?.order ?? Infinity;
+                const orderB = config.conversations.find(c => c.id === b.id)?.order ?? Infinity;
+                return orderA - orderB;
+            });
+        }
+        
         renderConversationsList();
     } catch (error) {
         console.error('加载对话失败:', error);
     }
+}
+
+// 确保有目录访问权限
+async function ensureDirectoryPermission() {
+    if (!directoryHandle) return false;
+    const options = { mode: 'readwrite' };
+    if ((await directoryHandle.queryPermission(options)) === 'granted') {
+        return true;
+    }
+    if ((await directoryHandle.requestPermission(options)) === 'granted') {
+        return true;
+    }
+    return false;
 }
 
 // 创建新对话
@@ -216,6 +378,12 @@ function renderConversationsList() {
     conversations.forEach(conversation => {
         const item = document.createElement('div');
         item.className = `conversation-item ${conversation.id === currentConversationId ? 'active' : ''}`;
+        item.draggable = true;
+        
+        // 添加拖动手柄
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.textContent = '⋮⋮';
         
         const titleContainer = document.createElement('div');
         titleContainer.className = 'conversation-title';
@@ -223,7 +391,7 @@ function renderConversationsList() {
         
         const menuButton = document.createElement('button');
         menuButton.className = 'conversation-menu-btn';
-        menuButton.innerHTML = '⋮'; // 竖直三点图标
+        menuButton.innerHTML = '⋮';
         menuButton.onclick = (e) => {
             e.stopPropagation();
             toggleDropdown(conversation.id);
@@ -255,12 +423,64 @@ function renderConversationsList() {
             dropdown.appendChild(dropdownItem);
         });
         
+        item.appendChild(dragHandle);
         item.appendChild(titleContainer);
         item.appendChild(menuButton);
         item.appendChild(dropdown);
         
-        item.onclick = () => loadConversation(conversation.id);
+        // 添加拖拽事件监听
+        item.addEventListener('dragstart', (e) => {
+            item.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', conversation.id);
+        });
+        
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+        });
+        
+        item.onclick = (e) => {
+            // 如果点击的是拖动手柄，不加载对话
+            if (!e.target.classList.contains('drag-handle')) {
+                loadConversation(conversation.id);
+            }
+        };
+        
         conversationsList.appendChild(item);
+    });
+    
+    // 添加放置区域事件监听
+    conversationsList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const draggingItem = document.querySelector('.dragging');
+        const siblings = [...conversationsList.querySelectorAll('.conversation-item:not(.dragging)')];
+        const nextSibling = siblings.find(sibling => {
+            const box = sibling.getBoundingClientRect();
+            const offset = e.clientY - box.top - box.height / 2;
+            return offset < 0;
+        });
+        
+        if (nextSibling) {
+            conversationsList.insertBefore(draggingItem, nextSibling);
+        } else {
+            conversationsList.appendChild(draggingItem);
+        }
+    });
+    
+    // 添加放置事件监听
+    conversationsList.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        const draggedId = e.dataTransfer.getData('text/plain');
+        const items = [...conversationsList.querySelectorAll('.conversation-item')];
+        const newOrder = items.map(item => {
+            const titleEl = item.querySelector('.conversation-title');
+            return conversations.find(c => c.title === titleEl.textContent);
+        });
+        
+        // 更新conversations数组顺序
+        conversations = newOrder;
+        
+        // 保存新的顺序到配置文件
+        await saveConfig();
     });
 }
 
@@ -742,6 +962,177 @@ async function deleteMessage(message) {
     } catch (error) {
         console.error('删除消息失败:', error);
         alert('删除消息失败');
+    }
+}
+
+// 切换语言
+function toggleLanguage() {
+    isEnglish = !isEnglish;
+    const langBtn = document.getElementById('langToggleBtn');
+    langBtn.textContent = isEnglish ? 'CH' : 'EN';
+    applyLanguage();
+    saveLanguage();
+}
+
+// 应用语言设置
+function applyLanguage() {
+    // 更新设置按钮文本
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {
+        const settingsText = settingsBtn.querySelector('span:last-child');
+        if (settingsText) {
+            settingsText.textContent = isEnglish ? 'Settings' : '设置';
+        }
+    }
+
+    // 更新新建对话按钮
+    const newChatBtn = document.getElementById('newChatBtn');
+    if (newChatBtn) {
+        newChatBtn.textContent = isEnglish ? 'New Chat' : '新建对话';
+    }
+
+    // 更新发送按钮
+    const sendButton = document.getElementById('sendButton');
+    if (sendButton) {
+        sendButton.textContent = isEnglish ? 'Send' : '发送';
+    }
+
+    // 更新消息输入框占位符
+    const messageInput = document.getElementById('messageInput');
+    if (messageInput) {
+        messageInput.placeholder = isEnglish ? 'Type a message...' : '输入消息...';
+    }
+
+    // 更新设置窗口的文本
+    const settingsTitle = document.querySelector('.settings-title');
+    if (settingsTitle) {
+        settingsTitle.textContent = isEnglish ? 'Settings' : '设置';
+    }
+
+    // 更新设置分区标题
+    const sectionTitles = document.querySelectorAll('.settings-section-title');
+    if (sectionTitles.length >= 2) {
+        sectionTitles[0].textContent = isEnglish ? 'General' : '常规设置';
+        sectionTitles[1].textContent = isEnglish ? 'Storage' : '存储设置';
+    }
+
+    // 更新设置项标签
+    const settingsLabels = document.querySelectorAll('.settings-item-label');
+    const labelTexts = {
+        '主题': 'Theme',
+        '语言': 'Language',
+        '存储位置': 'Storage Location'
+    };
+
+    settingsLabels.forEach(label => {
+        const currentText = label.textContent;
+        if (isEnglish && labelTexts[currentText]) {
+            label.textContent = labelTexts[currentText];
+        } else if (!isEnglish && Object.values(labelTexts).includes(currentText)) {
+            label.textContent = Object.keys(labelTexts).find(key => labelTexts[key] === currentText);
+        }
+    });
+
+    // 更新主题切换按钮文本
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    if (themeToggleBtn) {
+        themeToggleBtn.textContent = isEnglish ? 'Toggle Theme' : '切换主题';
+    }
+
+    // 更新选择存储位置按钮文本
+    const selectDirBtn = document.querySelector('.select-dir-btn');
+    if (selectDirBtn) {
+        selectDirBtn.textContent = isEnglish ? 'Select Storage Location' : '选择存储位置';
+    }
+
+    // 更新其他位置选项文本
+    const otherLocationSpan = document.querySelector('.select-dir-item:last-child span:last-child');
+    if (otherLocationSpan) {
+        otherLocationSpan.textContent = isEnglish ? 'Other Location...' : '其它位置...';
+    }
+
+    // 更新文件选择按钮文本
+    const fileBtnText = document.querySelector('.file-btn-text');
+    if (fileBtnText) {
+        fileBtnText.textContent = isEnglish ? 'Choose File' : '选择文件';
+    }
+
+    // 更新对话操作菜单文本
+    const dropdownItems = document.querySelectorAll('.dropdown-item');
+    const menuTexts = {
+        '重命名': 'Rename',
+        '打开文件夹': 'Open Folder',
+        '删除': 'Delete'
+    };
+
+    dropdownItems.forEach(item => {
+        const textSpan = item.querySelector('span:last-child');
+        if (textSpan) {
+            const currentText = textSpan.textContent;
+            if (isEnglish && menuTexts[currentText]) {
+                textSpan.textContent = menuTexts[currentText];
+            } else if (!isEnglish && Object.values(menuTexts).includes(currentText)) {
+                textSpan.textContent = Object.keys(menuTexts).find(key => menuTexts[key] === currentText);
+            }
+        }
+    });
+
+    // 更新删除消息按钮文本
+    const deleteButtons = document.querySelectorAll('.message-delete-btn');
+    deleteButtons.forEach(button => {
+        button.textContent = isEnglish ? 'Delete' : '删除';
+    });
+
+    // 更新复制按钮文本
+    const copyButtons = document.querySelectorAll('.copy-btn');
+    copyButtons.forEach(button => {
+        button.textContent = isEnglish ? 'Copy' : '复制';
+    });
+
+    // 更新放大缩小按钮提示文本
+    const expandBtn = document.getElementById('expandBtn');
+    if (expandBtn) {
+        expandBtn.title = isEnglish ? 
+            (expandBtn.textContent === '⧉' ? 'Restore' : 'Expand') : 
+            (expandBtn.textContent === '⧉' ? '还原' : '放大');
+    }
+
+    // 更新侧边栏切换按钮提示文本
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+    if (sidebarToggleBtn) {
+        const isSidebarHidden = document.querySelector('.sidebar').classList.contains('hidden');
+        sidebarToggleBtn.title = isEnglish ? 
+            (isSidebarHidden ? 'Show Sidebar' : 'Hide Sidebar') : 
+            (isSidebarHidden ? '显示侧边栏' : '隐藏侧边栏');
+    }
+}
+
+// 保存语言设置
+function saveLanguage() {
+    localStorage.setItem('language', isEnglish ? 'en' : 'zh');
+}
+
+// 恢复语言设置
+function restoreLanguage() {
+    const savedLanguage = localStorage.getItem('language');
+    isEnglish = savedLanguage === 'en';
+    const langBtn = document.getElementById('langToggleBtn');
+    if (langBtn) {
+        langBtn.textContent = isEnglish ? 'CH' : 'EN';
+    }
+    applyLanguage();
+}
+
+// 切换设置窗口
+function toggleSettings() {
+    const modal = document.getElementById('settingsModal');
+    modal.classList.toggle('show');
+    
+    // 当设置窗口打开时，更新设置项的状态
+    if (modal.classList.contains('show')) {
+        // 更新语言按钮状态
+        const langBtn = document.getElementById('langToggleBtn');
+        langBtn.textContent = isEnglish ? 'CH' : 'EN';
     }
 }
 
