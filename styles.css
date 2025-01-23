@@ -373,20 +373,84 @@ body {
     opacity: 1;
 }
 
+.message-edit-btn,
 .message-delete-btn {
     padding: 4px 8px;
     background-color: transparent;
-    border: 1px solid var(--accent-color);
-    color: var(--accent-color);
+    border: 1px solid var(--secondary-color);
+    color: var(--text-color);
     border-radius: 4px;
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s;
 }
 
+.message-edit-btn:hover {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.message-delete-btn {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
 .message-delete-btn:hover {
     background-color: var(--accent-color);
     color: white;
+}
+
+.message.editing .message-content {
+    position: relative;
+}
+
+.message.editing textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 8px;
+    margin: 0;
+    border: 1px solid var(--secondary-color);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: inherit;
+    resize: vertical;
+}
+
+.edit-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.edit-save-btn,
+.edit-cancel-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.edit-save-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.edit-save-btn:hover {
+    background-color: #3a3d57;
+}
+
+.edit-cancel-btn {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.edit-cancel-btn:hover {
+    background-color: var(--hover-color);
 }
 
 .copy-btn {
@@ -776,4 +840,73 @@ textarea {
 
 .sidebar.hidden + .main-content .sidebar-toggle-btn {
     left: 20px;
+}
+
+.image-info {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.image-name {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+}
+
+.image-name:hover {
+    background-color: var(--hover-color);
+}
+
+.image-resolution {
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+.image-name-input {
+    font-size: 12px;
+    padding: 2px 4px;
+    border: 1px solid var(--secondary-color);
+    border-radius: 3px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    margin-right: 8px;
+}
+
+.image-rename-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.image-rename-save,
+.image-rename-cancel {
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.image-rename-save {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.image-rename-save:hover {
+    background-color: #3a3d57;
+}
+
+.image-rename-cancel {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.image-rename-cancel:hover {
+    background-color: var(--hover-color);
 } 

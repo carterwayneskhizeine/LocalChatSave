@@ -165,6 +165,9 @@ async function initApp() {
             sidebarToggleBtn.title = '显示侧边栏';
         }
 
+        // 添加粘贴事件监听
+        document.getElementById('messageInput').addEventListener('paste', handlePaste);
+
         // 尝试恢复上次的存储位置
         await restoreLastDirectory();
 
@@ -571,7 +574,87 @@ async function deleteConversation(conversationId) {
     }
 }
 
-// 加载对话内容
+// 扫描对话文件夹中的新文件
+async function scanConversationFolder(conversation) {
+    try {
+        // 获取消息顺序文件
+        const orderHandle = await conversation.handle.getFileHandle('messages_order.json', { create: true });
+        const orderFile = await orderHandle.getFile();
+        const orderContent = await orderFile.text();
+        let messageOrder = orderContent ? JSON.parse(orderContent) : [];
+
+        // 获取文件夹中的所有文件
+        const existingFiles = new Set();
+        for await (const entry of conversation.handle.values()) {
+            if (entry.kind === 'file' && entry.name !== 'messages_order.json') {
+                existingFiles.add(entry.name);
+            }
+        }
+
+        // 获取已记录的文件
+        const recordedFiles = new Set(messageOrder.map(m => {
+            if (m.type === 'text') return `${m.id}.txt`;
+            if (m.type === 'file') return m.filename;
+            return null;
+        }).filter(Boolean));
+
+        // 找出新文件
+        const newFiles = Array.from(existingFiles).filter(filename => !recordedFiles.has(filename));
+
+        // 处理新文件
+        for (const filename of newFiles) {
+            const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+            const timestamp = new Date().toISOString();
+
+            // 如果不是文本文件，作为文件消息处理
+            if (!filename.endsWith('.txt') || filename === 'messages_order.json') {
+                messageOrder.push({
+                    id: messageId,
+                    type: 'file',
+                    filename: filename,
+                    timestamp: timestamp
+                });
+            } else {
+                // 文本文件的处理
+                const txtHandle = await conversation.handle.getFileHandle(filename);
+                const txtFile = await txtHandle.getFile();
+                const content = await txtFile.text();
+                
+                messageOrder.push({
+                    id: messageId,
+                    type: 'text',
+                    timestamp: timestamp
+                });
+
+                // 保存文本内容
+                const newTextHandle = await conversation.handle.getFileHandle(`${messageId}.txt`, { create: true });
+                const writable = await newTextHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+
+                // 删除原始文本文件
+                await conversation.handle.removeEntry(filename).catch(() => {});
+            }
+        }
+
+        // 按时间戳排序
+        messageOrder.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // 保存更新后的消息顺序
+        if (newFiles.length > 0) {
+            const orderWritable = await orderHandle.createWritable();
+            await orderWritable.write(JSON.stringify(messageOrder, null, 2));
+            await orderWritable.close();
+        }
+
+        return messageOrder;
+    } catch (error) {
+        console.error('扫描对话文件夹失败:', error);
+        return null;
+    }
+}
+
+// 修改 loadConversation 函数
 async function loadConversation(conversationId) {
     try {
         currentConversationId = conversationId;
@@ -581,12 +664,10 @@ async function loadConversation(conversationId) {
         const messagesContainer = document.getElementById('messagesContainer');
         messagesContainer.innerHTML = '';
         
-        // 读取消息顺序文件
-        const orderHandle = await conversation.handle.getFileHandle('messages_order.json', { create: true });
-        const orderFile = await orderHandle.getFile();
-        const orderContent = await orderFile.text();
-        const messageOrder = orderContent ? JSON.parse(orderContent) : [];
-        
+        // 扫描文件夹并获取更新后的消息顺序
+        const messageOrder = await scanConversationFolder(conversation);
+        if (!messageOrder) return;
+
         // 按顺序加载每条消息
         for (const messageInfo of messageOrder) {
             if (messageInfo.type === 'text') {
@@ -655,7 +736,7 @@ async function sendMessage() {
             const fileMessage = {
                 id: messageId,
                 type: 'file',
-                filename: file.name,
+                filename: file.name, // 使用文件对象的实际名称
                 timestamp: new Date().toISOString()
             };
             
@@ -770,7 +851,33 @@ async function renderMessage(message) {
             const img = document.createElement('img');
             const fileContent = await readFile(message.filename);
             img.src = URL.createObjectURL(new Blob([fileContent]));
+            
+            // 创建图片信息容器
+            const imageInfo = document.createElement('div');
+            imageInfo.className = 'image-info';
+            
+            // 创建图片名称元素
+            const imageName = document.createElement('span');
+            imageName.className = 'image-name';
+            imageName.textContent = message.filename;
+            imageName.title = isEnglish ? 'Click to rename' : '点击重命名';
+            imageName.onclick = () => enterImageRenameMode(imageName, message);
+            
+            // 创建图片分辨率元素
+            const imageResolution = document.createElement('span');
+            imageResolution.className = 'image-resolution';
+            
+            // 获取图片分辨率
+            img.onload = () => {
+                imageResolution.textContent = `${img.naturalWidth} × ${img.naturalHeight}`;
+                URL.revokeObjectURL(img.src);
+            };
+            
+            imageInfo.appendChild(imageName);
+            imageInfo.appendChild(imageResolution);
+            
             contentContainer.appendChild(img);
+            contentContainer.appendChild(imageInfo);
         } else {
             // 其他类型的文件显示为可下载的链接
             const link = document.createElement('a');
@@ -800,10 +907,19 @@ async function renderMessage(message) {
     const actionContainer = document.createElement('div');
     actionContainer.className = 'message-actions';
     
+    if (message.type === 'text') {
+        // 添加编辑按钮
+        const editBtn = document.createElement('button');
+        editBtn.className = 'message-edit-btn';
+        editBtn.textContent = isEnglish ? 'Edit' : '编辑';
+        editBtn.onclick = () => enterEditMode(message, contentContainer);
+        actionContainer.appendChild(editBtn);
+    }
+    
     // 添加删除按钮
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'message-delete-btn';
-    deleteBtn.textContent = '删除';
+    deleteBtn.textContent = isEnglish ? 'Delete' : '删除';
     deleteBtn.onclick = () => deleteMessage(message);
     
     actionContainer.appendChild(deleteBtn);
@@ -1133,6 +1249,302 @@ function toggleSettings() {
         // 更新语言按钮状态
         const langBtn = document.getElementById('langToggleBtn');
         langBtn.textContent = isEnglish ? 'CH' : 'EN';
+    }
+}
+
+// 进入编辑模式
+function enterEditMode(message, contentContainer) {
+    const messageElement = contentContainer.closest('.message');
+    messageElement.classList.add('editing');
+    
+    // 保存原始内容
+    const originalContent = message.content;
+    
+    // 创建编辑区域
+    const textarea = document.createElement('textarea');
+    textarea.value = originalContent;
+    
+    // 创建操作按钮
+    const editActions = document.createElement('div');
+    editActions.className = 'edit-actions';
+    
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'edit-save-btn';
+    saveBtn.textContent = isEnglish ? 'Save' : '保存';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'edit-cancel-btn';
+    cancelBtn.textContent = isEnglish ? 'Cancel' : '取消';
+    
+    editActions.appendChild(saveBtn);
+    editActions.appendChild(cancelBtn);
+    
+    // 清空原有内容并添加编辑界面
+    contentContainer.innerHTML = '';
+    contentContainer.appendChild(textarea);
+    contentContainer.appendChild(editActions);
+    
+    // 自动聚焦并将光标移到末尾
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    
+    // 保存编辑
+    saveBtn.onclick = async () => {
+        const newContent = textarea.value.trim();
+        if (newContent === '') return;
+        if (newContent === originalContent) {
+            exitEditMode(messageElement, contentContainer, originalContent);
+            return;
+        }
+        
+        try {
+            await saveEditedMessage(message.id, newContent);
+            message.content = newContent;
+            exitEditMode(messageElement, contentContainer, newContent);
+        } catch (error) {
+            console.error('保存编辑失败:', error);
+            alert(isEnglish ? 'Failed to save changes' : '保存修改失败');
+        }
+    };
+    
+    // 取消编辑
+    cancelBtn.onclick = () => {
+        exitEditMode(messageElement, contentContainer, originalContent);
+    };
+    
+    // ESC键取消编辑
+    textarea.onkeydown = (e) => {
+        if (e.key === 'Escape') {
+            exitEditMode(messageElement, contentContainer, originalContent);
+        }
+    };
+}
+
+// 退出编辑模式
+function exitEditMode(messageElement, contentContainer, content) {
+    messageElement.classList.remove('editing');
+    if (isCode(content)) {
+        contentContainer.className = 'message-content code';
+        const pre = document.createElement('pre');
+        const code = document.createElement('code');
+        code.textContent = content;
+        pre.appendChild(code);
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.textContent = isEnglish ? 'Copy' : '复制';
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(content);
+            copyBtn.textContent = isEnglish ? 'Copied' : '已复制';
+            setTimeout(() => copyBtn.textContent = isEnglish ? 'Copy' : '复制', 2000);
+        };
+        
+        contentContainer.innerHTML = '';
+        contentContainer.appendChild(copyBtn);
+        contentContainer.appendChild(pre);
+    } else {
+        contentContainer.className = 'message-content';
+        contentContainer.textContent = content;
+    }
+}
+
+// 保存编辑后的消息
+async function saveEditedMessage(messageId, newContent) {
+    const conversation = conversations.find(c => c.id === currentConversationId);
+    if (!conversation) throw new Error('未找到对话');
+    
+    // 保存新的文本内容
+    const textHandle = await conversation.handle.getFileHandle(`${messageId}.txt`, { create: true });
+    const writable = await textHandle.createWritable();
+    await writable.write(newContent);
+    await writable.close();
+}
+
+// 添加图片重命名相关函数
+async function enterImageRenameMode(nameElement, message) {
+    const imageInfo = nameElement.parentElement;
+    const oldName = message.filename;
+    
+    // 创建输入框
+    const input = document.createElement('input');
+    input.className = 'image-name-input';
+    input.value = oldName;
+    input.type = 'text';
+    
+    // 创建操作按钮容器
+    const actions = document.createElement('div');
+    actions.className = 'image-rename-actions';
+    
+    // 创建保存按钮
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'image-rename-save';
+    saveBtn.textContent = isEnglish ? 'Save' : '保存';
+    
+    // 创建取消按钮
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'image-rename-cancel';
+    cancelBtn.textContent = isEnglish ? 'Cancel' : '取消';
+    
+    // 保存重命名
+    saveBtn.onclick = async () => {
+        const newName = input.value.trim();
+        if (!newName || newName === oldName) {
+            exitImageRenameMode(imageInfo, nameElement);
+            return;
+        }
+        
+        // 验证文件名
+        if (!newName.match(/\.(jpg|jpeg|png|gif)$/i)) {
+            alert(isEnglish ? 'Please keep the image extension' : '请保留图片扩展名');
+            return;
+        }
+        
+        try {
+            await renameImage(message, newName);
+            nameElement.textContent = newName;
+            exitImageRenameMode(imageInfo, nameElement);
+        } catch (error) {
+            console.error('重命名图片失败:', error);
+            alert(isEnglish ? 'Failed to rename image' : '重命名图片失败');
+        }
+    };
+    
+    // 取消重命名
+    cancelBtn.onclick = () => {
+        exitImageRenameMode(imageInfo, nameElement);
+    };
+    
+    // ESC键取消重命名
+    input.onkeydown = (e) => {
+        if (e.key === 'Escape') {
+            exitImageRenameMode(imageInfo, nameElement);
+        } else if (e.key === 'Enter') {
+            saveBtn.click();
+        }
+    };
+    
+    actions.appendChild(saveBtn);
+    actions.appendChild(cancelBtn);
+    
+    // 替换原有内容
+    imageInfo.innerHTML = '';
+    imageInfo.appendChild(input);
+    imageInfo.appendChild(actions);
+    
+    // 聚焦输入框并选中文件名部分（不包括扩展名）
+    input.focus();
+    const extIndex = oldName.lastIndexOf('.');
+    input.setSelectionRange(0, extIndex);
+}
+
+// 退出图片重命名模式
+function exitImageRenameMode(imageInfo, nameElement) {
+    const resolution = imageInfo.querySelector('.image-resolution');
+    imageInfo.innerHTML = '';
+    imageInfo.appendChild(nameElement);
+    if (resolution) {
+        imageInfo.appendChild(resolution);
+    }
+}
+
+// 重命名图片文件
+async function renameImage(message, newName) {
+    const conversation = conversations.find(c => c.id === currentConversationId);
+    if (!conversation) throw new Error('未找到对话');
+    
+    try {
+        // 读取原文件内容
+        const oldFileHandle = await conversation.handle.getFileHandle(message.filename);
+        const file = await oldFileHandle.getFile();
+        const content = await file.arrayBuffer();
+        
+        // 创建新文件
+        const newFileHandle = await conversation.handle.getFileHandle(newName, { create: true });
+        const writable = await newFileHandle.createWritable();
+        await writable.write(content);
+        await writable.close();
+        
+        // 删除旧文件
+        await conversation.handle.removeEntry(message.filename);
+        
+        // 更新消息顺序文件中的文件名
+        const orderHandle = await conversation.handle.getFileHandle('messages_order.json');
+        const orderFile = await orderHandle.getFile();
+        const orderContent = await orderFile.text();
+        let messageOrder = JSON.parse(orderContent);
+        
+        const targetMessage = messageOrder.find(m => m.id === message.id);
+        if (targetMessage) {
+            targetMessage.filename = newName;
+            const orderWritable = await orderHandle.createWritable();
+            await orderWritable.write(JSON.stringify(messageOrder, null, 2));
+            await orderWritable.close();
+        }
+        
+        // 更新消息对象
+        message.filename = newName;
+    } catch (error) {
+        console.error('重命名图片失败:', error);
+        throw error;
+    }
+}
+
+// 处理粘贴事件
+async function handlePaste(e) {
+    const items = e.clipboardData.items;
+    let hasImage = false;
+
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            hasImage = true;
+            const file = item.getAsFile();
+            const timestamp = Date.now();
+            const ext = item.type.split('/')[1];
+            const filename = `clipboard_image_${timestamp}.${ext}`;
+            
+            // 创建一个新的 File 对象，使用我们生成的文件名
+            const renamedFile = new File([file], filename, { type: file.type });
+            
+            // 创建预览
+            const filePreviewArea = document.getElementById('filePreviewArea');
+            const previewItem = document.createElement('div');
+            previewItem.className = 'file-preview-item';
+            
+            const fileName = document.createElement('span');
+            fileName.className = 'file-preview-name';
+            fileName.textContent = filename;
+            
+            const removeButton = document.createElement('button');
+            removeButton.className = 'file-preview-remove';
+            removeButton.textContent = '×';
+            
+            previewItem.appendChild(fileName);
+            previewItem.appendChild(removeButton);
+            filePreviewArea.appendChild(previewItem);
+            
+            // 将重命名后的图片添加到文件输入
+            const fileInput = document.getElementById('fileInput');
+            const dt = new DataTransfer();
+            
+            // 保留现有的文件
+            if (fileInput.files) {
+                Array.from(fileInput.files).forEach(existingFile => {
+                    dt.items.add(existingFile);
+                });
+            }
+            
+            // 添加新的剪贴板图片（使用重命名后的文件）
+            dt.items.add(renamedFile);
+            fileInput.files = dt.files;
+            
+            // 设置移除按钮事件
+            removeButton.onclick = () => removeFileFromSelection(renamedFile);
+        }
+    }
+    
+    // 如果粘贴的是图片，阻止默认行为（防止图片URL被粘贴到输入框）
+    if (hasImage) {
+        e.preventDefault();
     }
 }
 
