@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地对话保存系统</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button id="newChatBtn" class="new-chat-btn">新建对话</button>
+            </div>
+            <div class="conversations-list" id="conversationsList">
+                <!-- 对话列表将通过JavaScript动态添加 -->
+            </div>
+        </aside>
+
+        <!-- 主要内容区 -->
+        <main class="main-content">
+            <div class="chat-container" id="chatContainer">
+                <div class="messages" id="messagesContainer">
+                    <!-- 消息内容将通过JavaScript动态添加 -->
+                </div>
+                
+                <div class="input-area">
+                    <div class="input-container">
+                        <textarea id="messageInput" placeholder="输入消息..."></textarea>
+                        <div class="button-group">
+                            <button id="fileButton" class="file-btn">
+                                <span>选择文件</span>
+                                <input type="file" id="fileInput" multiple>
+                            </button>
+                            <button id="sendButton" class="send-btn">发送</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
