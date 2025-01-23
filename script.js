@@ -3,6 +3,7 @@ let currentConversationId = null;
 let conversations = [];
 let directoryHandle = null;
 const CONFIG_FILE = 'chat_config.json';
+let isDarkMode = false;
 
 // 初始化应用
 async function initApp() {
@@ -14,11 +15,51 @@ async function initApp() {
         selectDirBtn.onclick = requestDirectoryPermission;
         document.querySelector('.sidebar-header').insertBefore(selectDirBtn, document.getElementById('newChatBtn'));
 
+        // 添加文件选择事件监听
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+        // 添加主题切换事件监听
+        document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
+
+        // 恢复主题设置
+        restoreTheme();
+
         // 尝试恢复上次的存储位置
         await restoreLastDirectory();
     } catch (error) {
         console.error('初始化失败:', error);
     }
+}
+
+// 切换主题
+function toggleTheme() {
+    isDarkMode = !isDarkMode;
+    applyTheme();
+    saveTheme();
+}
+
+// 应用主题
+function applyTheme() {
+    const themeIcon = document.querySelector('.theme-icon');
+    if (isDarkMode) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeIcon.textContent = '🌙';
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        themeIcon.textContent = '🌞';
+    }
+}
+
+// 保存主题设置
+function saveTheme() {
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+}
+
+// 恢复主题设置
+function restoreTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    isDarkMode = savedTheme === 'dark';
+    applyTheme();
 }
 
 // 保存配置文件
@@ -294,14 +335,38 @@ async function loadConversation(conversationId) {
         const messagesContainer = document.getElementById('messagesContainer');
         messagesContainer.innerHTML = '';
         
-        // 读取对话内容文件
-        const fileHandle = await conversation.handle.getFileHandle('messages.json', { create: true });
-        const file = await fileHandle.getFile();
-        const content = await file.text();
-        const messages = content ? JSON.parse(content) : [];
+        // 读取消息顺序文件
+        const orderHandle = await conversation.handle.getFileHandle('messages_order.json', { create: true });
+        const orderFile = await orderHandle.getFile();
+        const orderContent = await orderFile.text();
+        const messageOrder = orderContent ? JSON.parse(orderContent) : [];
         
-        // 渲染消息
-        messages.forEach(message => renderMessage(message));
+        // 按顺序加载每条消息
+        for (const messageInfo of messageOrder) {
+            if (messageInfo.type === 'text') {
+                // 读取文本消息
+                const textHandle = await conversation.handle.getFileHandle(`${messageInfo.id}.txt`);
+                const textFile = await textHandle.getFile();
+                const content = await textFile.text();
+                
+                await renderMessage({
+                    type: 'text',
+                    content: content,
+                    timestamp: messageInfo.timestamp
+                });
+            } else if (messageInfo.type === 'file') {
+                // 使用保存的文件名加载文件
+                try {
+                    await renderMessage({
+                        type: 'file',
+                        filename: messageInfo.filename, // 使用保存在顺序文件中的文件名
+                        timestamp: messageInfo.timestamp
+                    });
+                } catch (error) {
+                    console.error('加载文件失败:', messageInfo.filename, error);
+                }
+            }
+        }
         
         renderConversationsList();
     } catch (error) {
@@ -313,6 +378,7 @@ async function loadConversation(conversationId) {
 async function sendMessage() {
     const input = document.getElementById('messageInput');
     const fileInput = document.getElementById('fileInput');
+    const filePreviewArea = document.getElementById('filePreviewArea');
     const text = input.value.trim();
     const files = fileInput.files;
     
@@ -322,19 +388,18 @@ async function sendMessage() {
         const conversation = conversations.find(c => c.id === currentConversationId);
         if (!conversation) return;
         
-        const message = {
-            type: 'text',
-            content: text,
-            timestamp: new Date().toISOString()
-        };
-        
-        // 保存文本消息
+        // 发送文本消息
         if (text) {
+            const message = {
+                type: 'text',
+                content: text,
+                timestamp: new Date().toISOString()
+            };
             await saveMessage(conversation.handle, message);
-            renderMessage(message);
+            await renderMessage(message);
         }
         
-        // 保存文件
+        // 发送文件
         for (const file of files) {
             const fileMessage = {
                 type: 'file',
@@ -349,12 +414,15 @@ async function sendMessage() {
             await writable.close();
             
             await saveMessage(conversation.handle, fileMessage);
-            renderMessage(fileMessage);
+            await renderMessage(fileMessage);
         }
         
         // 清空输入
         input.value = '';
         fileInput.value = '';
+        filePreviewArea.innerHTML = '';
+        const dt = new DataTransfer();
+        fileInput.files = dt.files;
     } catch (error) {
         console.error('发送消息失败:', error);
         alert('发送消息失败');
@@ -364,16 +432,42 @@ async function sendMessage() {
 // 保存消息到文件
 async function saveMessage(conversationHandle, message) {
     try {
-        const fileHandle = await conversationHandle.getFileHandle('messages.json', { create: true });
-        const file = await fileHandle.getFile();
-        const content = await file.text();
-        const messages = content ? JSON.parse(content) : [];
+        // 读取或创建消息顺序文件
+        let orderHandle = await conversationHandle.getFileHandle('messages_order.json', { create: true });
+        let orderFile = await orderHandle.getFile();
+        let orderContent = await orderFile.text();
+        let messageOrder = orderContent ? JSON.parse(orderContent) : [];
         
-        messages.push(message);
+        // 添加新消息到顺序列表
+        const messageId = Date.now().toString();
+        const messageInfo = {
+            id: messageId,
+            type: message.type,
+            timestamp: message.timestamp
+        };
+
+        // 如果是文件消息，保存文件名
+        if (message.type === 'file') {
+            messageInfo.filename = message.filename;
+        }
         
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(messages, null, 2));
-        await writable.close();
+        messageOrder.push(messageInfo);
+        
+        // 保存消息内容
+        if (message.type === 'text') {
+            // 保存文本消息
+            const textHandle = await conversationHandle.getFileHandle(`${messageId}.txt`, { create: true });
+            const textWritable = await textHandle.createWritable();
+            await textWritable.write(message.content);
+            await textWritable.close();
+        }
+        
+        // 保存顺序文件
+        const orderWritable = await orderHandle.createWritable();
+        await orderWritable.write(JSON.stringify(messageOrder, null, 2));
+        await orderWritable.close();
+        
+        return messageId;
     } catch (error) {
         console.error('保存消息失败:', error);
         throw error;
@@ -385,11 +479,16 @@ async function renderMessage(message) {
     const messagesContainer = document.getElementById('messagesContainer');
     const messageElement = document.createElement('div');
     messageElement.className = 'message';
+    messageElement.dataset.messageId = message.id; // 添加消息ID
+    
+    // 创建消息内容容器
+    const contentContainer = document.createElement('div');
+    contentContainer.className = 'message-content';
     
     if (message.type === 'text') {
         // 检查是否是代码
         if (isCode(message.content)) {
-            messageElement.className += ' code';
+            contentContainer.className += ' code';
             const pre = document.createElement('pre');
             const code = document.createElement('code');
             code.textContent = message.content;
@@ -404,10 +503,10 @@ async function renderMessage(message) {
                 setTimeout(() => copyBtn.textContent = '复制', 2000);
             };
             
-            messageElement.appendChild(copyBtn);
-            messageElement.appendChild(pre);
+            contentContainer.appendChild(copyBtn);
+            contentContainer.appendChild(pre);
         } else {
-            messageElement.textContent = message.content;
+            contentContainer.textContent = message.content;
         }
     } else if (message.type === 'file') {
         const filename = message.filename.toLowerCase();
@@ -417,13 +516,14 @@ async function renderMessage(message) {
             video.controls = true;
             const fileContent = await readFile(message.filename);
             video.src = URL.createObjectURL(new Blob([fileContent]));
-            messageElement.appendChild(video);
+            contentContainer.appendChild(video);
         } else if (filename.match(/\.(jpg|jpeg|png|gif)$/)) {
             const img = document.createElement('img');
             const fileContent = await readFile(message.filename);
             img.src = URL.createObjectURL(new Blob([fileContent]));
-            messageElement.appendChild(img);
+            contentContainer.appendChild(img);
         } else {
+            // 其他类型的文件显示为可下载的链接
             const link = document.createElement('a');
             link.href = '#';
             link.textContent = message.filename;
@@ -438,9 +538,30 @@ async function renderMessage(message) {
                 a.click();
                 URL.revokeObjectURL(url);
             };
-            messageElement.appendChild(link);
+            // 添加文件图标或类型标识
+            const fileIcon = document.createElement('span');
+            fileIcon.className = 'file-icon';
+            fileIcon.textContent = '📎 ';
+            contentContainer.appendChild(fileIcon);
+            contentContainer.appendChild(link);
         }
     }
+    
+    // 创建消息操作按钮容器
+    const actionContainer = document.createElement('div');
+    actionContainer.className = 'message-actions';
+    
+    // 添加删除按钮
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'message-delete-btn';
+    deleteBtn.textContent = '删除';
+    deleteBtn.onclick = () => deleteMessage(message);
+    
+    actionContainer.appendChild(deleteBtn);
+    
+    // 将内容和操作按钮添加到消息元素
+    messageElement.appendChild(contentContainer);
+    messageElement.appendChild(actionContainer);
     
     messagesContainer.appendChild(messageElement);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -507,6 +628,52 @@ async function openConversationFolder(conversationId) {
     }
 }
 
+// 处理文件选择
+function handleFileSelect(event) {
+    const filePreviewArea = document.getElementById('filePreviewArea');
+    const files = event.target.files;
+    
+    // 清空预览区域
+    filePreviewArea.innerHTML = '';
+    
+    // 显示选择的文件
+    Array.from(files).forEach(file => {
+        const previewItem = document.createElement('div');
+        previewItem.className = 'file-preview-item';
+        
+        const fileName = document.createElement('span');
+        fileName.className = 'file-preview-name';
+        fileName.textContent = file.name;
+        
+        const removeButton = document.createElement('button');
+        removeButton.className = 'file-preview-remove';
+        removeButton.textContent = '×';
+        removeButton.onclick = () => removeFileFromSelection(file);
+        
+        previewItem.appendChild(fileName);
+        previewItem.appendChild(removeButton);
+        filePreviewArea.appendChild(previewItem);
+    });
+}
+
+// 从选择中移除文件
+function removeFileFromSelection(fileToRemove) {
+    const fileInput = document.getElementById('fileInput');
+    const filePreviewArea = document.getElementById('filePreviewArea');
+    
+    // 创建新的 FileList
+    const dt = new DataTransfer();
+    Array.from(fileInput.files)
+        .filter(file => file !== fileToRemove)
+        .forEach(file => dt.items.add(file));
+    
+    // 更新文件输入
+    fileInput.files = dt.files;
+    
+    // 重新显示预览
+    handleFileSelect({ target: fileInput });
+}
+
 // 事件监听
 document.getElementById('newChatBtn').onclick = createNewConversation;
 document.getElementById('sendButton').onclick = sendMessage;
@@ -516,6 +683,48 @@ document.getElementById('messageInput').onkeydown = (e) => {
         sendMessage();
     }
 };
+
+// 删除消息
+async function deleteMessage(message) {
+    if (!confirm('确定要删除这条消息吗？')) return;
+    
+    try {
+        const conversation = conversations.find(c => c.id === currentConversationId);
+        if (!conversation) return;
+        
+        // 读取消息顺序文件
+        const orderHandle = await conversation.handle.getFileHandle('messages_order.json');
+        const orderFile = await orderHandle.getFile();
+        const orderContent = await orderFile.text();
+        let messageOrder = JSON.parse(orderContent);
+        
+        // 从顺序列表中移除消息
+        messageOrder = messageOrder.filter(m => m.id !== message.id);
+        
+        // 如果是文本消息，删除对应的文本文件
+        if (message.type === 'text') {
+            await conversation.handle.removeEntry(`${message.id}.txt`);
+        }
+        // 如果是文件消息，删除对应的文件
+        else if (message.type === 'file') {
+            await conversation.handle.removeEntry(message.filename);
+        }
+        
+        // 保存更新后的顺序文件
+        const orderWritable = await orderHandle.createWritable();
+        await orderWritable.write(JSON.stringify(messageOrder, null, 2));
+        await orderWritable.close();
+        
+        // 从界面上移除消息
+        const messageElement = document.querySelector(`.message[data-message-id="${message.id}"]`);
+        if (messageElement) {
+            messageElement.remove();
+        }
+    } catch (error) {
+        console.error('删除消息失败:', error);
+        alert('删除消息失败');
+    }
+}
 
 // 初始化应用
 initApp(); 

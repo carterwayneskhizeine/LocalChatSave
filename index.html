@@ -11,6 +11,12 @@
         <!-- 侧边栏 -->
         <aside class="sidebar">
             <div class="sidebar-header">
+                <div class="theme-switch">
+                    <button id="themeToggleBtn" class="theme-toggle-btn">
+                        <span class="theme-icon">🌞</span>
+                        <span class="theme-text">切换主题</span>
+                    </button>
+                </div>
                 <button id="newChatBtn" class="new-chat-btn">新建对话</button>
             </div>
             <div class="conversations-list" id="conversationsList">
@@ -26,6 +32,11 @@
                 </div>
                 
                 <div class="input-area">
+                    <!-- 添加文件预览区域 -->
+                    <div class="file-preview-area" id="filePreviewArea">
+                        <!-- 选择的文件将在这里预览 -->
+                    </div>
+                    
                     <div class="input-container">
                         <textarea id="messageInput" placeholder="输入消息..."></textarea>
                         <div class="button-group">
