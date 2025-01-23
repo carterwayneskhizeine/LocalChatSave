@@ -203,6 +203,16 @@ function renderConversationsList() {
     const conversationsList = document.getElementById('conversationsList');
     conversationsList.innerHTML = '';
     
+    // 关闭下拉菜单的点击事件监听
+    document.addEventListener('click', (e) => {
+        const dropdowns = document.querySelectorAll('.conversation-dropdown.show');
+        dropdowns.forEach(dropdown => {
+            if (!dropdown.parentElement.contains(e.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+    });
+    
     conversations.forEach(conversation => {
         const item = document.createElement('div');
         item.className = `conversation-item ${conversation.id === currentConversationId ? 'active' : ''}`;
@@ -211,42 +221,58 @@ function renderConversationsList() {
         titleContainer.className = 'conversation-title';
         titleContainer.textContent = conversation.title;
         
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.className = 'conversation-buttons';
-        
-        // 重命名按钮
-        const renameBtn = document.createElement('button');
-        renameBtn.textContent = '重命名';
-        renameBtn.onclick = (e) => {
+        const menuButton = document.createElement('button');
+        menuButton.className = 'conversation-menu-btn';
+        menuButton.innerHTML = '⋮'; // 竖直三点图标
+        menuButton.onclick = (e) => {
             e.stopPropagation();
-            renameConversation(conversation.id);
+            toggleDropdown(conversation.id);
         };
         
-        // 打开文件夹按钮
-        const openFolderBtn = document.createElement('button');
-        openFolderBtn.textContent = '打开文件夹';
-        openFolderBtn.onclick = (e) => {
-            e.stopPropagation();
-            openConversationFolder(conversation.id);
-        };
+        const dropdown = document.createElement('div');
+        dropdown.className = 'conversation-dropdown';
+        dropdown.id = `dropdown-${conversation.id}`;
         
-        // 删除按钮
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = '删除';
-        deleteBtn.onclick = (e) => {
-            e.stopPropagation();
-            deleteConversation(conversation.id);
-        };
+        // 下拉菜单项
+        const menuItems = [
+            { icon: '✏️', text: '重命名', action: () => renameConversation(conversation.id) },
+            { icon: '📂', text: '打开文件夹', action: () => openConversationFolder(conversation.id) },
+            { icon: '🗑️', text: '删除', action: () => deleteConversation(conversation.id) }
+        ];
         
-        buttonsContainer.appendChild(renameBtn);
-        buttonsContainer.appendChild(openFolderBtn);
-        buttonsContainer.appendChild(deleteBtn);
+        menuItems.forEach(menuItem => {
+            const dropdownItem = document.createElement('div');
+            dropdownItem.className = 'dropdown-item';
+            dropdownItem.innerHTML = `
+                <span class="dropdown-item-icon">${menuItem.icon}</span>
+                <span>${menuItem.text}</span>
+            `;
+            dropdownItem.onclick = (e) => {
+                e.stopPropagation();
+                menuItem.action();
+                dropdown.classList.remove('show');
+            };
+            dropdown.appendChild(dropdownItem);
+        });
         
         item.appendChild(titleContainer);
-        item.appendChild(buttonsContainer);
+        item.appendChild(menuButton);
+        item.appendChild(dropdown);
         
         item.onclick = () => loadConversation(conversation.id);
         conversationsList.appendChild(item);
+    });
+}
+
+// 切换下拉菜单显示状态
+function toggleDropdown(conversationId) {
+    const dropdowns = document.querySelectorAll('.conversation-dropdown');
+    dropdowns.forEach(dropdown => {
+        if (dropdown.id === `dropdown-${conversationId}`) {
+            dropdown.classList.toggle('show');
+        } else {
+            dropdown.classList.remove('show');
+        }
     });
 }
 
@@ -350,6 +376,7 @@ async function loadConversation(conversationId) {
                 const content = await textFile.text();
                 
                 await renderMessage({
+                    id: messageInfo.id,
                     type: 'text',
                     content: content,
                     timestamp: messageInfo.timestamp
@@ -358,8 +385,9 @@ async function loadConversation(conversationId) {
                 // 使用保存的文件名加载文件
                 try {
                     await renderMessage({
+                        id: messageInfo.id,
                         type: 'file',
-                        filename: messageInfo.filename, // 使用保存在顺序文件中的文件名
+                        filename: messageInfo.filename,
                         timestamp: messageInfo.timestamp
                     });
                 } catch (error) {
@@ -390,7 +418,9 @@ async function sendMessage() {
         
         // 发送文本消息
         if (text) {
+            const messageId = Date.now().toString();
             const message = {
+                id: messageId,
                 type: 'text',
                 content: text,
                 timestamp: new Date().toISOString()
@@ -401,7 +431,9 @@ async function sendMessage() {
         
         // 发送文件
         for (const file of files) {
+            const messageId = Date.now().toString();
             const fileMessage = {
+                id: messageId,
                 type: 'file',
                 filename: file.name,
                 timestamp: new Date().toISOString()
@@ -439,9 +471,8 @@ async function saveMessage(conversationHandle, message) {
         let messageOrder = orderContent ? JSON.parse(orderContent) : [];
         
         // 添加新消息到顺序列表
-        const messageId = Date.now().toString();
         const messageInfo = {
-            id: messageId,
+            id: message.id,
             type: message.type,
             timestamp: message.timestamp
         };
@@ -456,7 +487,7 @@ async function saveMessage(conversationHandle, message) {
         // 保存消息内容
         if (message.type === 'text') {
             // 保存文本消息
-            const textHandle = await conversationHandle.getFileHandle(`${messageId}.txt`, { create: true });
+            const textHandle = await conversationHandle.getFileHandle(`${message.id}.txt`, { create: true });
             const textWritable = await textHandle.createWritable();
             await textWritable.write(message.content);
             await textWritable.close();
@@ -466,8 +497,6 @@ async function saveMessage(conversationHandle, message) {
         const orderWritable = await orderHandle.createWritable();
         await orderWritable.write(JSON.stringify(messageOrder, null, 2));
         await orderWritable.close();
-        
-        return messageId;
     } catch (error) {
         console.error('保存消息失败:', error);
         throw error;
@@ -600,31 +629,17 @@ async function openConversationFolder(conversationId) {
         const conversation = conversations.find(c => c.id === conversationId);
         if (!conversation) return;
 
-        // 创建一个临时文件在目标文件夹中
-        const tempFileName = '.folder_opener_' + Date.now() + '.txt';
-        const fileHandle = await conversation.handle.getFileHandle(tempFileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write('This is a temporary file to help open the folder.');
-        await writable.close();
-
-        // 让用户"下载"这个文件，这会打开文件所在的文件夹
-        const file = await fileHandle.getFile();
-        const url = URL.createObjectURL(file);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = tempFileName;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        // 延迟一段时间后删除临时文件
-        setTimeout(async () => {
-            try {
-                await conversation.handle.removeEntry(tempFileName);
-            } catch {}
-        }, 1000);
+        // 使用 File System Access API 打开文件选择器
+        await window.showOpenFilePicker({
+            startIn: conversation.handle,
+            multiple: true // 允许多选，这样用户可以看到所有文件
+        });
     } catch (error) {
         console.error('打开文件夹失败:', error);
-        alert('打开文件夹失败，请手动打开文件夹位置');
+        // 用户取消选择时不显示错误提示
+        if (error.name !== 'AbortError') {
+            alert('打开文件夹失败');
+        }
     }
 }
 
@@ -701,13 +716,17 @@ async function deleteMessage(message) {
         // 从顺序列表中移除消息
         messageOrder = messageOrder.filter(m => m.id !== message.id);
         
-        // 如果是文本消息，删除对应的文本文件
-        if (message.type === 'text') {
-            await conversation.handle.removeEntry(`${message.id}.txt`);
-        }
-        // 如果是文件消息，删除对应的文件
-        else if (message.type === 'file') {
-            await conversation.handle.removeEntry(message.filename);
+        try {
+            // 如果是文本消息，删除对应的文本文件
+            if (message.type === 'text') {
+                await conversation.handle.removeEntry(`${message.id}.txt`).catch(() => {});
+            }
+            // 如果是文件消息，删除对应的文件
+            else if (message.type === 'file') {
+                await conversation.handle.removeEntry(message.filename).catch(() => {});
+            }
+        } catch (error) {
+            console.error('删除文件失败，继续更新消息列表:', error);
         }
         
         // 保存更新后的顺序文件
