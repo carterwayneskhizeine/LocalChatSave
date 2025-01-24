@@ -701,69 +701,184 @@ function toggleDropdown(conversationId) {
     });
 }
 
-// 重命名对话
+// 重命名对话或子文件夹
 async function renameConversation(conversationId) {
     const conversation = conversations.find(c => c.id === conversationId);
     if (!conversation) return;
     
-    const newTitle = prompt(isEnglish ? 'Enter new chat name:' : '请输入新的对话名称:', conversation.title);
-    if (!newTitle || newTitle === conversation.title) return;
+    // 确定当前要重命名的是主文件夹还是子文件夹
+    const isMainFolder = conversation.currentFolder === 'main';
+    const currentFolderInfo = !isMainFolder ? conversation.subFolders.get(conversation.currentFolder) : null;
+    
+    const oldName = isMainFolder ? conversation.title : currentFolderInfo.name;
+    const promptText = isMainFolder ? 
+        (isEnglish ? 'Enter new chat name:' : '请输入新的对话名称:') :
+        (isEnglish ? 'Enter new subfolder name:' : '请输入新的子文件夹名称:');
+    
+    const newName = prompt(promptText, oldName);
+    if (!newName || newName === oldName) return;
     
     try {
-        // 创建新文件夹
-        const newDirHandle = await directoryHandle.getDirectoryHandle(newTitle, { create: true });
-        
-        // 递归复制文件夹的函数
-        async function copyFolder(sourceHandle, targetHandle) {
-            for await (const entry of sourceHandle.values()) {
-                if (entry.kind === 'file') {
-                    // 复制文件
-                    const file = await entry.getFile();
-                    const content = await file.arrayBuffer();
-                    const newFileHandle = await targetHandle.getFileHandle(entry.name, { create: true });
-                    const writable = await newFileHandle.createWritable();
-                    await writable.write(content);
-                    await writable.close();
-                } else if (entry.kind === 'directory') {
-                    // 递归复制子文件夹
-                    const newSubDirHandle = await targetHandle.getDirectoryHandle(entry.name, { create: true });
-                    await copyFolder(entry, newSubDirHandle);
+        if (isMainFolder) {
+            // 检查主文件夹名称是否已存在
+            try {
+                await directoryHandle.getDirectoryHandle(newName);
+                throw new Error('文件夹已存在');
+            } catch (error) {
+                if (error.name !== 'NotFoundError') {
+                    throw error;
                 }
+            }
+            
+            // 重命名主文件夹
+            const newDirHandle = await directoryHandle.getDirectoryHandle(newName, { create: true });
+            
+            // 递归复制文件夹的函数
+            async function copyFolder(sourceHandle, targetHandle) {
+                for await (const entry of sourceHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const file = await entry.getFile();
+                        const content = await file.arrayBuffer();
+                        const newFileHandle = await targetHandle.getFileHandle(entry.name, { create: true });
+                        const writable = await newFileHandle.createWritable();
+                        await writable.write(content);
+                        await writable.close();
+                    } else if (entry.kind === 'directory') {
+                        const newSubDirHandle = await targetHandle.getDirectoryHandle(entry.name, { create: true });
+                        await copyFolder(entry, newSubDirHandle);
+                    }
+                }
+            }
+            
+            // 复制所有内容
+            await copyFolder(conversation.handle, newDirHandle);
+            
+            // 删除旧文件夹
+            await directoryHandle.removeEntry(conversationId, { recursive: true });
+            
+            // 更新会话信息
+            conversation.title = newName;
+            conversation.id = newName;
+            conversation.handle = newDirHandle;
+            
+            // 重新扫描子文件夹
+            conversation.subFolders = new Map();
+            await scanSubFolders(newDirHandle, conversation.subFolders, '');
+            
+            // 如果当前正在查看这个对话，重新加载内容
+            if (currentConversationId === conversationId) {
+                currentConversationId = newName;
+                await loadConversation(newName);
+            }
+        } else {
+            // 重命名子文件夹
+            const parentPath = conversation.currentFolder.split('/').slice(0, -1).join('/');
+            const currentFolderName = conversation.currentFolder.split('/').pop();
+            
+            // 获取父文件夹句柄
+            let parentHandle;
+            if (parentPath === '') {
+                parentHandle = conversation.handle;
+            } else {
+                const parentFolderInfo = conversation.subFolders.get(parentPath);
+                if (!parentFolderInfo) {
+                    throw new Error('找不到父文件夹');
+                }
+                parentHandle = parentFolderInfo.handle;
+            }
+            
+            try {
+                // 检查新文件夹名称是否已存在
+                try {
+                    await parentHandle.getDirectoryHandle(newName);
+                    throw new Error('文件夹已存在');
+                } catch (error) {
+                    if (error.name !== 'NotFoundError') {
+                        throw error;
+                    }
+                }
+                
+                // 创建新的子文件夹
+                const newDirHandle = await parentHandle.getDirectoryHandle(newName, { create: true });
+                
+                // 获取当前文件夹句柄
+                const currentFolderHandle = conversation.subFolders.get(conversation.currentFolder).handle;
+                
+                // 复制所有内容到新文件夹
+                for await (const entry of currentFolderHandle.values()) {
+                    if (entry.kind === 'file') {
+                        const file = await entry.getFile();
+                        const content = await file.arrayBuffer();
+                        const newFileHandle = await newDirHandle.getFileHandle(entry.name, { create: true });
+                        const writable = await newFileHandle.createWritable();
+                        await writable.write(content);
+                        await writable.close();
+                    } else if (entry.kind === 'directory') {
+                        const newSubDirHandle = await newDirHandle.getDirectoryHandle(entry.name, { create: true });
+                        await copyFolder(entry, newSubDirHandle);
+                    }
+                }
+                
+                // 更新子文件夹映射
+                const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+                
+                // 先从映射中移除旧路径
+                conversation.subFolders.delete(conversation.currentFolder);
+                
+                // 添加新路径
+                conversation.subFolders.set(newPath, {
+                    handle: newDirHandle,
+                    name: newName,
+                    fullPath: newPath
+                });
+                
+                // 更新当前文件夹路径
+                const oldPath = conversation.currentFolder;
+                conversation.currentFolder = newPath;
+                
+                // 删除旧的子文件夹
+                try {
+                    await parentHandle.removeEntry(currentFolderName, { recursive: true });
+                } catch (error) {
+                    console.error('删除旧文件夹失败:', error);
+                    // 如果删除失败，尝试重新获取父文件夹句柄并删除
+                    if (parentPath === '') {
+                        await conversation.handle.removeEntry(currentFolderName, { recursive: true });
+                    } else {
+                        const newParentHandle = await conversation.handle.getDirectoryHandle(parentPath);
+                        await newParentHandle.removeEntry(currentFolderName, { recursive: true });
+                    }
+                }
+                
+                // 重新加载当前文件夹内容
+                await loadConversation(conversationId);
+                
+            } catch (error) {
+                // 如果发生错误，尝试恢复原始状态
+                console.error('重命名子文件夹失败:', error);
+                throw error;
             }
         }
         
-        // 开始复制所有内容
-        await copyFolder(conversation.handle, newDirHandle);
-        
-        // 删除旧文件夹
-        await directoryHandle.removeEntry(conversationId, { recursive: true });
-        
-        // 更新会话信息
-        conversation.title = newTitle;
-        conversation.id = newTitle;
-        conversation.handle = newDirHandle;
-        
-        // 重新扫描子文件夹
-        conversation.subFolders = new Map();
-        await scanSubFolders(newDirHandle, conversation.subFolders, '');
-        
-        // 如果当前正在查看这个对话，重新加载内容
-        if (currentConversationId === conversationId) {
-            currentConversationId = newTitle;
-            await loadConversation(newTitle);
-        }
-        
-        await saveConfig(); // 保存配置
+        await saveConfig();
         renderConversationsList();
         
-        // 显示成功提示
-        alert(isEnglish ? 'Chat renamed successfully' : '对话重命名成功');
+        alert(isEnglish ? 
+            (isMainFolder ? 'Chat renamed successfully' : 'Subfolder renamed successfully') : 
+            (isMainFolder ? '对话重命名成功' : '子文件夹重命名成功'));
     } catch (error) {
         console.error('重命名失败:', error);
-        alert(isEnglish ? 'Failed to rename chat. Please make sure the new name is valid and not duplicate.' : '重命名失败，请确保新名称合法且没有重复');
+        const errorMessage = error.message === '文件夹已存在' ?
+            (isEnglish ? 'A folder with this name already exists' : '该名称的文件夹已存在') :
+            (isEnglish ? 'Failed to rename. Please try again.' : '重命名失败，请重试');
+        alert(errorMessage);
+        
         try {
-            // 如果失败，尝试删除可能创建的新文件夹
-            await directoryHandle.removeEntry(newTitle).catch(() => {});
+            if (isMainFolder) {
+                await directoryHandle.removeEntry(newName).catch(() => {});
+            } else {
+                await parentHandle.removeEntry(newName).catch(() => {});
+            }
         } catch {}
     }
 }
