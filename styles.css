@@ -360,6 +360,105 @@ body {
     position: relative;
     padding: 12px;
     border-radius: 4px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
+}
+
+.message-content.code pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
+}
+
+.message-content.code code {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-all;
+    font-family: monospace;
+}
+
+.message-file-info {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+}
+
+.message-filename {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.message-filename:hover {
+    background-color: var(--hover-color);
+}
+
+.message-folder {
+    color: var(--text-color);
+    opacity: 0.7;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.message-folder-icon {
+    font-size: 14px;
+}
+
+.message-filename-input {
+    font-size: 12px;
+    padding: 2px 4px;
+    border: 1px solid var(--secondary-color);
+    border-radius: 3px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    margin-right: 8px;
+    min-width: 150px;
+}
+
+.message-rename-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.message-rename-save,
+.message-rename-cancel {
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.message-rename-save {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.message-rename-save:hover {
+    background-color: #3a3d57;
+}
+
+.message-rename-cancel {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.message-rename-cancel:hover {
+    background-color: var(--hover-color);
 }
 
 .message-actions {
@@ -909,4 +1008,33 @@ textarea {
 
 .image-rename-cancel:hover {
     background-color: var(--hover-color);
+}
+
+.dropdown-separator {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 4px 0;
+}
+
+.dropdown-header {
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--secondary-color);
+    font-weight: bold;
+    background-color: var(--hover-color);
+}
+
+.conversation-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.conversation-folder-indicator {
+    font-size: 12px;
+    color: var(--secondary-color);
+    background-color: var(--hover-color);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 4px;
 } 
