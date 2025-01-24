@@ -6,6 +6,19 @@ const CONFIG_FILE = 'chat_config.json';
 let isDarkMode = false;
 let isEnglish = false; // 添加语言设置变量
 
+// 添加子文件夹选择窗口的 HTML
+document.body.insertAdjacentHTML('beforeend', `
+    <div id="subfoldersModal" class="subfolders-modal">
+        <div class="subfolders-window">
+            <div class="subfolders-header">
+                <div class="subfolders-title">${isEnglish ? 'All Subfolders' : '所有子文件夹'}</div>
+                <button class="subfolders-close" onclick="closeSubfoldersModal()">×</button>
+            </div>
+            <div id="subfoldersContent" class="subfolders-content"></div>
+        </div>
+    </div>
+`);
+
 // 初始化应用
 async function initApp() {
     try {
@@ -168,6 +181,31 @@ async function initApp() {
         // 添加粘贴事件监听
         document.getElementById('messageInput').addEventListener('paste', handlePaste);
 
+        // 添加消息容器滚动事件监听
+        const messagesContainer = document.getElementById('messagesContainer');
+        const scrollBottomBtn = document.getElementById('scrollBottomBtn');
+        
+        messagesContainer.addEventListener('scroll', () => {
+            const scrollHeight = messagesContainer.scrollHeight;
+            const scrollTop = messagesContainer.scrollTop;
+            const clientHeight = messagesContainer.clientHeight;
+            
+            // 当距离底部超过200像素时显示按钮
+            if (scrollHeight - scrollTop - clientHeight > 200) {
+                scrollBottomBtn.classList.add('show');
+            } else {
+                scrollBottomBtn.classList.remove('show');
+            }
+        });
+        
+        // 添加跳转到底部按钮点击事件
+        scrollBottomBtn.onclick = () => {
+            messagesContainer.scrollTo({
+                top: messagesContainer.scrollHeight,
+                behavior: 'smooth'
+            });
+        };
+
         // 尝试恢复上次的存储位置
         await restoreLastDirectory();
 
@@ -217,7 +255,8 @@ async function saveConfig() {
             conversations: conversations.map(c => ({
                 id: c.id,
                 title: c.title,
-                order: conversations.indexOf(c) // 添加顺序信息
+                currentFolder: c.currentFolder, // 添加当前文件夹信息
+                order: conversations.indexOf(c)
             }))
         };
         
@@ -287,7 +326,6 @@ async function selectCustomDirectory() {
         }
         
         directoryHandle = handle;
-        document.querySelector('.select-dir-dropdown').classList.remove('show');
         await restoreLastDirectory();
     } catch (error) {
         if (error.name !== 'AbortError') {
@@ -341,8 +379,8 @@ async function loadConversations() {
                     id: entry.name,
                     title: entry.name,
                     handle: entry,
-                    subFolders: new Map(), // 存储所有子文件夹，包括嵌套的
-                    currentFolder: 'main'   // 当前显示的文件夹
+                    subFolders: new Map(),
+                    currentFolder: 'main'   // 默认为主文件夹
                 };
                 
                 // 扫描所有子文件夹（包括嵌套的）
@@ -352,7 +390,7 @@ async function loadConversations() {
             }
         }
         
-        // 读取配置文件中的顺序信息
+        // 读取配置文件中的顺序信息和当前文件夹状态
         const config = await loadConfig();
         if (config && config.conversations) {
             // 根据配置文件中的顺序排序
@@ -360,6 +398,18 @@ async function loadConversations() {
                 const orderA = config.conversations.find(c => c.id === a.id)?.order ?? Infinity;
                 const orderB = config.conversations.find(c => c.id === b.id)?.order ?? Infinity;
                 return orderA - orderB;
+            });
+            
+            // 恢复每个对话的当前文件夹状态
+            conversations.forEach(conversation => {
+                const savedConversation = config.conversations.find(c => c.id === conversation.id);
+                if (savedConversation && savedConversation.currentFolder) {
+                    // 确保子文件夹存在才恢复状态
+                    if (savedConversation.currentFolder === 'main' || 
+                        conversation.subFolders.has(savedConversation.currentFolder)) {
+                        conversation.currentFolder = savedConversation.currentFolder;
+                    }
+                }
             });
         }
         
@@ -439,7 +489,73 @@ async function createNewConversation() {
     }
 }
 
-// 渲染对话列表
+// 修改菜单项创建部分
+function createDropdownMenu(conversation) {
+    const menuItems = [
+        { icon: '✏️', text: isEnglish ? 'Rename' : '重命名', action: () => renameConversation(conversation.id) },
+        { icon: '📂', text: isEnglish ? 'Open Folder' : '打开文件夹', action: () => openConversationFolder(conversation.id) },
+        { icon: '🗑️', text: isEnglish ? 'Delete' : '删除', action: () => deleteConversation(conversation.id) }
+    ];
+    
+    // 如果不在主文件夹，添加"返回主文件夹"选项
+    if (conversation.currentFolder !== 'main') {
+        menuItems.unshift({
+            icon: '⬆️',
+            text: isEnglish ? 'Return to Main Folder' : '返回主文件夹',
+            action: () => switchFolder(conversation.id, 'main')
+        });
+    }
+    
+    // 如果有子文件夹，添加"所有子文件夹"按钮
+    if (conversation.subFolders.size > 0) {
+        menuItems.push({ type: 'separator' });
+        menuItems.push({
+            icon: '📁',
+            text: isEnglish ? 'All Subfolders' : '所有子文件夹',
+            action: () => showSubfoldersModal(conversation)
+        });
+    }
+    
+    return menuItems;
+}
+
+// 显示子文件夹选择窗口
+function showSubfoldersModal(conversation) {
+    const modal = document.getElementById('subfoldersModal');
+    const content = document.getElementById('subfoldersContent');
+    content.innerHTML = '';
+    
+    // 将所有子文件夹按字母顺序排序
+    const sortedFolders = Array.from(conversation.subFolders.entries())
+        .sort(([pathA], [pathB]) => pathA.localeCompare(pathB));
+    
+    // 创建子文件夹列表
+    for (const [fullPath, folder] of sortedFolders) {
+        if (fullPath !== conversation.currentFolder) {
+            const item = document.createElement('div');
+            item.className = 'subfolder-item';
+            item.innerHTML = `
+                <span class="subfolder-icon">📁</span>
+                <span class="subfolder-path">${fullPath}</span>
+            `;
+            item.onclick = () => {
+                switchFolder(conversation.id, fullPath);
+                closeSubfoldersModal();
+            };
+            content.appendChild(item);
+        }
+    }
+    
+    modal.classList.add('show');
+}
+
+// 关闭子文件夹选择窗口
+function closeSubfoldersModal() {
+    const modal = document.getElementById('subfoldersModal');
+    modal.classList.remove('show');
+}
+
+// 修改渲染对话列表函数中的下拉菜单创建部分
 function renderConversationsList() {
     const conversationsList = document.getElementById('conversationsList');
     conversationsList.innerHTML = '';
@@ -468,14 +584,6 @@ function renderConversationsList() {
         titleContainer.className = 'conversation-title';
         titleContainer.textContent = conversation.title;
         
-        // 如果不在主文件夹，显示当前文件夹名称
-        if (conversation.currentFolder !== 'main') {
-            const folderIndicator = document.createElement('span');
-            folderIndicator.className = 'conversation-folder-indicator';
-            folderIndicator.textContent = conversation.currentFolder;
-            titleContainer.appendChild(folderIndicator);
-        }
-        
         const menuButton = document.createElement('button');
         menuButton.className = 'conversation-menu-btn';
         menuButton.innerHTML = '⋮';
@@ -488,55 +596,14 @@ function renderConversationsList() {
         dropdown.className = 'conversation-dropdown';
         dropdown.id = `dropdown-${conversation.id}`;
         
-        // 修改菜单项创建部分
-        const menuItems = [
-            { icon: '✏️', text: '重命名', action: () => renameConversation(conversation.id) },
-            { icon: '📂', text: '打开文件夹', action: () => openConversationFolder(conversation.id) },
-            { icon: '🗑️', text: '删除', action: () => deleteConversation(conversation.id) }
-        ];
-        
-        // 如果不在主文件夹，添加"返回主文件夹"选项
-        if (conversation.currentFolder !== 'main') {
-            menuItems.unshift({
-                icon: '⬆️',
-                text: '返回主文件夹',
-                action: () => switchFolder(conversation.id, 'main')
-            });
-        }
-        
-        // 添加所有子文件夹菜单项
-        if (conversation.subFolders.size > 0) {
-            menuItems.push({ type: 'separator' });
-            menuItems.push({ type: 'header', text: '所有子文件夹' });
-            
-            // 将所有子文件夹按字母顺序排序
-            const sortedFolders = Array.from(conversation.subFolders.entries())
-                .sort(([pathA], [pathB]) => pathA.localeCompare(pathB));
-            
-            for (const [fullPath, folder] of sortedFolders) {
-                if (fullPath !== conversation.currentFolder) {
-                    menuItems.push({
-                        icon: '📁',
-                        text: fullPath, // 显示完整路径
-                        action: () => switchFolder(conversation.id, fullPath)
-                    });
-                }
-            }
-        }
+        // 使用新的创建菜单函数
+        const menuItems = createDropdownMenu(conversation);
         
         menuItems.forEach(menuItem => {
             if (menuItem.type === 'separator') {
                 const separator = document.createElement('div');
                 separator.className = 'dropdown-separator';
                 dropdown.appendChild(separator);
-                return;
-            }
-            
-            if (menuItem.type === 'header') {
-                const header = document.createElement('div');
-                header.className = 'dropdown-header';
-                header.textContent = menuItem.text;
-                dropdown.appendChild(header);
                 return;
             }
             
@@ -620,6 +687,13 @@ function toggleDropdown(conversationId) {
     const dropdowns = document.querySelectorAll('.conversation-dropdown');
     dropdowns.forEach(dropdown => {
         if (dropdown.id === `dropdown-${conversationId}`) {
+            // 获取触发按钮的位置
+            const menuBtn = dropdown.parentElement.querySelector('.conversation-menu-btn');
+            const rect = menuBtn.getBoundingClientRect();
+            
+            // 设置下拉菜单的位置
+            dropdown.style.top = `${rect.top}px`;
+            
             dropdown.classList.toggle('show');
         } else {
             dropdown.classList.remove('show');
@@ -632,27 +706,34 @@ async function renameConversation(conversationId) {
     const conversation = conversations.find(c => c.id === conversationId);
     if (!conversation) return;
     
-    const newTitle = prompt('请输入新的对话名称:', conversation.title);
+    const newTitle = prompt(isEnglish ? 'Enter new chat name:' : '请输入新的对话名称:', conversation.title);
     if (!newTitle || newTitle === conversation.title) return;
     
     try {
         // 创建新文件夹
         const newDirHandle = await directoryHandle.getDirectoryHandle(newTitle, { create: true });
         
-        // 复制所有文件到新文件夹
-        for await (const entry of conversation.handle.values()) {
-            if (entry.kind === 'file') {
-                // 读取原文件
-                const file = await entry.getFile();
-                const content = await file.arrayBuffer();
-                
-                // 在新文件夹中创建文件
-                const newFileHandle = await newDirHandle.getFileHandle(entry.name, { create: true });
-                const writable = await newFileHandle.createWritable();
-                await writable.write(content);
-                await writable.close();
+        // 递归复制文件夹的函数
+        async function copyFolder(sourceHandle, targetHandle) {
+            for await (const entry of sourceHandle.values()) {
+                if (entry.kind === 'file') {
+                    // 复制文件
+                    const file = await entry.getFile();
+                    const content = await file.arrayBuffer();
+                    const newFileHandle = await targetHandle.getFileHandle(entry.name, { create: true });
+                    const writable = await newFileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                } else if (entry.kind === 'directory') {
+                    // 递归复制子文件夹
+                    const newSubDirHandle = await targetHandle.getDirectoryHandle(entry.name, { create: true });
+                    await copyFolder(entry, newSubDirHandle);
+                }
             }
         }
+        
+        // 开始复制所有内容
+        await copyFolder(conversation.handle, newDirHandle);
         
         // 删除旧文件夹
         await directoryHandle.removeEntry(conversationId, { recursive: true });
@@ -662,11 +743,24 @@ async function renameConversation(conversationId) {
         conversation.id = newTitle;
         conversation.handle = newDirHandle;
         
+        // 重新扫描子文件夹
+        conversation.subFolders = new Map();
+        await scanSubFolders(newDirHandle, conversation.subFolders, '');
+        
+        // 如果当前正在查看这个对话，重新加载内容
+        if (currentConversationId === conversationId) {
+            currentConversationId = newTitle;
+            await loadConversation(newTitle);
+        }
+        
         await saveConfig(); // 保存配置
         renderConversationsList();
+        
+        // 显示成功提示
+        alert(isEnglish ? 'Chat renamed successfully' : '对话重命名成功');
     } catch (error) {
         console.error('重命名失败:', error);
-        alert('重命名失败，请确保新名称合法且没有重复');
+        alert(isEnglish ? 'Failed to rename chat. Please make sure the new name is valid and not duplicate.' : '重命名失败，请确保新名称合法且没有重复');
         try {
             // 如果失败，尝试删除可能创建的新文件夹
             await directoryHandle.removeEntry(newTitle).catch(() => {});
@@ -789,38 +883,60 @@ async function loadConversation(conversationId) {
         const conversation = conversations.find(c => c.id === conversationId);
         if (!conversation) return;
         
+        // 获取正确的文件夹句柄
+        const folderHandle = conversation.currentFolder === 'main' ? 
+            conversation.handle : 
+            conversation.subFolders.get(conversation.currentFolder).handle;
+        
+        // 清空消息容器
         const messagesContainer = document.getElementById('messagesContainer');
         messagesContainer.innerHTML = '';
         
-        // 扫描文件夹并获取更新后的消息顺序
-        const messageOrder = await scanConversationFolder(conversation);
-        if (!messageOrder) return;
-
-        // 按顺序加载每条消息
-        for (const messageInfo of messageOrder) {
-            if (messageInfo.type === 'text') {
-                // 读取文本消息
-                const textHandle = await conversation.handle.getFileHandle(`${messageInfo.id}.txt`);
-                const textFile = await textHandle.getFile();
-                const content = await textFile.text();
-                
-                await renderMessage({
-                    id: messageInfo.id,
-                    type: 'text',
-                    content: content,
-                    timestamp: messageInfo.timestamp
-                });
-            } else if (messageInfo.type === 'file') {
-                // 使用保存的文件名加载文件
-                try {
+        // 更新当前路径显示
+        updateCurrentPath(conversation);
+        
+        // 重新绑定滚动事件监听
+        const scrollBottomBtn = document.getElementById('scrollBottomBtn');
+        messagesContainer.onscroll = () => {
+            const scrollHeight = messagesContainer.scrollHeight;
+            const scrollTop = messagesContainer.scrollTop;
+            const clientHeight = messagesContainer.clientHeight;
+            
+            // 当距离底部超过200像素时显示按钮
+            if (scrollHeight - scrollTop - clientHeight > 200) {
+                scrollBottomBtn.classList.add('show');
+            } else {
+                scrollBottomBtn.classList.remove('show');
+            }
+        };
+        
+        // 扫描并加载当前文件夹的消息
+        const messageOrder = await scanConversationFolder({
+            id: conversationId,
+            handle: folderHandle
+        });
+        
+        if (messageOrder) {
+            // 按顺序加载每条消息
+            for (const messageInfo of messageOrder) {
+                if (messageInfo.type === 'text') {
+                    const textHandle = await folderHandle.getFileHandle(`${messageInfo.id}.txt`);
+                    const textFile = await textHandle.getFile();
+                    const content = await textFile.text();
+                    
+                    await renderMessage({
+                        id: messageInfo.id,
+                        type: 'text',
+                        content: content,
+                        timestamp: messageInfo.timestamp
+                    });
+                } else if (messageInfo.type === 'file') {
                     await renderMessage({
                         id: messageInfo.id,
                         type: 'file',
                         filename: messageInfo.filename,
                         timestamp: messageInfo.timestamp
                     });
-                } catch (error) {
-                    console.error('加载文件失败:', messageInfo.filename, error);
                 }
             }
         }
@@ -1103,6 +1219,23 @@ async function renderMessage(message) {
     
     messagesContainer.appendChild(messageElement);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    // 在添加消息后检查是否需要显示跳转按钮
+    const scrollHeight = messagesContainer.scrollHeight;
+    const scrollTop = messagesContainer.scrollTop;
+    const clientHeight = messagesContainer.clientHeight;
+    
+    const scrollBottomBtn = document.getElementById('scrollBottomBtn');
+    if (scrollHeight - scrollTop - clientHeight > 200) {
+        scrollBottomBtn.classList.add('show');
+    } else {
+        scrollBottomBtn.classList.remove('show');
+    }
+    
+    // 如果用户正在查看底部，自动滚动到新消息
+    if (scrollHeight - scrollTop - clientHeight < 300) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
 }
 
 // 检查文本是否是代码
@@ -1315,7 +1448,8 @@ function applyLanguage() {
     const labelTexts = {
         '主题': 'Theme',
         '语言': 'Language',
-        '存储位置': 'Storage Location'
+        '存储位置': 'Storage Location',
+        '更新': 'Update'  // 添加"更新"的翻译
     };
 
     settingsLabels.forEach(label => {
@@ -1399,6 +1533,24 @@ function applyLanguage() {
             (isSidebarHidden ? 'Show Sidebar' : 'Hide Sidebar') : 
             (isSidebarHidden ? '显示侧边栏' : '隐藏侧边栏');
     }
+
+    // 更新跳转到底部按钮的提示文本
+    const scrollBottomBtn = document.getElementById('scrollBottomBtn');
+    if (scrollBottomBtn) {
+        scrollBottomBtn.title = isEnglish ? 'Scroll to bottom' : '跳转到底部';
+    }
+
+    // 更新"更新文件夹"按钮文本
+    const updateFolderBtn = document.querySelector('.update-folder-btn');
+    if (updateFolderBtn) {
+        updateFolderBtn.textContent = isEnglish ? 'Update Folders' : '更新文件夹';
+    }
+
+    // 更新子文件夹窗口的标题
+    const subfoldersTitle = document.querySelector('.subfolders-title');
+    if (subfoldersTitle) {
+        subfoldersTitle.textContent = isEnglish ? 'All Subfolders' : '所有子文件夹';
+    }
 }
 
 // 保存语言设置
@@ -1427,6 +1579,62 @@ function toggleSettings() {
         // 更新语言按钮状态
         const langBtn = document.getElementById('langToggleBtn');
         langBtn.textContent = isEnglish ? 'CH' : 'EN';
+        
+        // 更新设置部分
+        const settingsSections = document.querySelectorAll('.settings-section');
+        
+        // 更新常规设置部分
+        const generalSection = settingsSections[0];
+        if (generalSection) {
+            const generalItems = generalSection.querySelectorAll('.settings-item');
+            
+            // 主题设置
+            generalItems[0].innerHTML = `
+                <div class="settings-item-row">
+                    <span class="settings-item-label">${isEnglish ? 'Theme' : '主题'}</span>
+                    <button id="themeToggleBtn" class="theme-toggle-btn">
+                        ${isEnglish ? 'Toggle Theme' : '切换主题'}
+                    </button>
+                </div>
+            `;
+            
+            // 语言设置
+            generalItems[1].innerHTML = `
+                <div class="settings-item-row">
+                    <span class="settings-item-label">${isEnglish ? 'Language' : '语言'}</span>
+                    <button id="langToggleBtn" class="lang-toggle-btn">
+                        ${isEnglish ? 'CH' : 'EN'}
+                    </button>
+                </div>
+            `;
+        }
+        
+        // 更新存储设置部分
+        const storageSection = settingsSections[1];
+        if (storageSection) {
+            const storageItem = storageSection.querySelector('.settings-item');
+            if (storageItem) {
+                storageItem.innerHTML = `
+                    <div class="settings-item-row">
+                        <span class="settings-item-label">${isEnglish ? 'Storage Location' : '存储位置'}</span>
+                        <button class="select-dir-btn" onclick="selectCustomDirectory()">
+                            ${isEnglish ? 'Select Storage Location' : '选择存储位置'}
+                        </button>
+                    </div>
+                    <div class="settings-item-row">
+                        <span class="settings-item-label">${isEnglish ? 'Update' : '更新'}</span>
+                        <button class="update-folder-btn" onclick="updateFolders()">
+                            ${isEnglish ? 'Update Folders' : '更新文件夹'}
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // 重新绑定主题切换按钮事件
+        document.getElementById('themeToggleBtn').onclick = toggleTheme;
+        // 重新绑定语言切换按钮事件
+        document.getElementById('langToggleBtn').onclick = toggleLanguage;
     }
 }
 
@@ -1694,7 +1902,6 @@ async function handlePaste(e) {
             
             const removeButton = document.createElement('button');
             removeButton.className = 'file-preview-remove';
-            removeButton.textContent = '×';
             
             previewItem.appendChild(fileName);
             previewItem.appendChild(removeButton);
@@ -1744,6 +1951,9 @@ async function switchFolder(conversationId, folderPath) {
         const messagesContainer = document.getElementById('messagesContainer');
         messagesContainer.innerHTML = '';
         
+        // 更新当前路径显示
+        updateCurrentPath(conversation);
+        
         // 扫描并加载新文件夹的消息
         const messageOrder = await scanConversationFolder({
             id: conversationId,
@@ -1780,6 +1990,29 @@ async function switchFolder(conversationId, folderPath) {
     } catch (error) {
         console.error('切换文件夹失败:', error);
         alert(isEnglish ? 'Failed to switch folder' : '切换文件夹失败');
+    }
+}
+
+// 添加更新当前路径的函数
+function updateCurrentPath(conversation) {
+    const pathDisplay = document.getElementById('currentPath');
+    if (!pathDisplay) {
+        // 如果路径显示元素不存在，创建它
+        const mainContent = document.querySelector('.main-content');
+        const pathDisplay = document.createElement('div');
+        pathDisplay.id = 'currentPath';
+        pathDisplay.className = 'current-path';
+        
+        // 将路径显示元素插入到主内容区域的顶部
+        mainContent.insertBefore(pathDisplay, mainContent.firstChild);
+    }
+    
+    // 更新路径显示
+    if (conversation.currentFolder !== 'main') {
+        pathDisplay.innerHTML = `<span class="path-icon">📂</span> ${conversation.currentFolder}`;
+        pathDisplay.style.display = 'block';
+    } else {
+        pathDisplay.style.display = 'none';
     }
 }
 
@@ -1826,6 +2059,9 @@ async function enterMessageRenameMode(nameElement, message) {
             await renameMessageFile(message, newName);
             nameElement.innerHTML = `<span class="message-folder-icon">📄</span>${newName}`;
             exitMessageRenameMode(fileInfo, nameElement);
+            
+            // 保存配置以确保更改被持久化
+            await saveConfig();
         } catch (error) {
             console.error('重命名消息文件失败:', error);
             alert(isEnglish ? 'Failed to rename message file' : '重命名消息文件失败');
@@ -1881,38 +2117,232 @@ async function renameMessageFile(message, newName) {
             conversation.handle : 
             conversation.subFolders.get(conversation.currentFolder).handle;
         
-        // 读取原文件内容
+        // 从新文件名中提取新的消息ID（去掉.txt扩展名）
+        const newMessageId = newName.replace('.txt', '');
+        
+        // 检查是否存在同名文件
+        let existingContent = '';
+        let existingMessageId = '';
+        let existingMessage = null;
+        try {
+            // 尝试读取同名文件
+            const existingHandle = await currentFolderHandle.getFileHandle(newName);
+            const existingFile = await existingHandle.getFile();
+            existingContent = await existingFile.text();
+            
+            // 查找现有消息的ID
+            const orderHandle = await currentFolderHandle.getFileHandle('messages_order.json');
+            const orderFile = await orderHandle.getFile();
+            const orderContent = await orderFile.text();
+            let messageOrder = JSON.parse(orderContent);
+            
+            // 找到对应的消息记录
+            existingMessage = messageOrder.find(m => m.type === 'text' && `${m.id}.txt` === newName);
+            if (existingMessage) {
+                existingMessageId = existingMessage.id;
+            }
+        } catch (error) {
+            // 文件不存在，继续正常重命名流程
+        }
+        
+        // 读取当前文件内容
         const oldFileHandle = await currentFolderHandle.getFileHandle(`${message.id}.txt`);
         const file = await oldFileHandle.getFile();
         const content = await file.text();
         
-        // 创建新文件
-        const newFileHandle = await currentFolderHandle.getFileHandle(newName, { create: true });
-        const writable = await newFileHandle.createWritable();
-        await writable.write(content);
-        await writable.close();
-        
-        // 删除旧文件
-        await currentFolderHandle.removeEntry(`${message.id}.txt`);
-        
-        // 更新消息顺序文件中的文件名
-        const orderHandle = await currentFolderHandle.getFileHandle('messages_order.json');
-        const orderFile = await orderHandle.getFile();
-        const orderContent = await orderFile.text();
-        let messageOrder = JSON.parse(orderContent);
-        
-        const targetMessage = messageOrder.find(m => m.id === message.id);
-        if (targetMessage) {
-            targetMessage.filename = newName;
+        if (existingContent) {
+            // 如果存在同名文件，合并内容
+            const mergedContent = existingContent + '\n\n' + content;
+            
+            // 更新现有文件
+            const writable = await currentFolderHandle.getFileHandle(newName, { create: true }).then(handle => handle.createWritable());
+            await writable.write(mergedContent);
+            await writable.close();
+            
+            // 删除旧文件
+            await currentFolderHandle.removeEntry(`${message.id}.txt`);
+            
+            // 更新消息顺序文件
+            const orderHandle = await currentFolderHandle.getFileHandle('messages_order.json');
+            const orderFile = await orderHandle.getFile();
+            const orderContent = await orderFile.text();
+            let messageOrder = JSON.parse(orderContent);
+            
+            // 移除被合并的消息
+            messageOrder = messageOrder.filter(m => m.id !== message.id);
+            
+            // 更新现有消息的内容
+            if (existingMessage) {
+                const messageElement = document.querySelector(`.message[data-message-id="${existingMessageId}"]`);
+                if (messageElement) {
+                    const contentContainer = messageElement.querySelector('.message-content');
+                    if (isCode(mergedContent)) {
+                        contentContainer.className = 'message-content code';
+                        const pre = document.createElement('pre');
+                        const code = document.createElement('code');
+                        code.textContent = mergedContent;
+                        pre.appendChild(code);
+                        
+                        const copyBtn = document.createElement('button');
+                        copyBtn.className = 'copy-btn';
+                        copyBtn.textContent = isEnglish ? 'Copy' : '复制';
+                        copyBtn.onclick = () => {
+                            navigator.clipboard.writeText(mergedContent);
+                            copyBtn.textContent = isEnglish ? 'Copied' : '已复制';
+                            setTimeout(() => copyBtn.textContent = isEnglish ? 'Copy' : '复制', 2000);
+                        };
+                        
+                        contentContainer.innerHTML = '';
+                        contentContainer.appendChild(copyBtn);
+                        contentContainer.appendChild(pre);
+                    } else {
+                        contentContainer.className = 'message-content';
+                        contentContainer.textContent = mergedContent;
+                    }
+                }
+            }
+            
+            // 保存更新后的消息顺序
             const orderWritable = await orderHandle.createWritable();
             await orderWritable.write(JSON.stringify(messageOrder, null, 2));
             await orderWritable.close();
+            
+            // 从界面上移除被合并的消息元素
+            const messageElement = document.querySelector(`.message[data-message-id="${message.id}"]`);
+            if (messageElement) {
+                messageElement.remove();
+            }
+        } else {
+            // 如果不存在同名文件，执行普通的重命名操作
+            const newFileHandle = await currentFolderHandle.getFileHandle(newName, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            
+            // 删除旧文件
+            await currentFolderHandle.removeEntry(`${message.id}.txt`);
+            
+            // 更新消息顺序文件中的消息ID
+            const orderHandle = await currentFolderHandle.getFileHandle('messages_order.json');
+            const orderFile = await orderHandle.getFile();
+            const orderContent = await orderFile.text();
+            let messageOrder = JSON.parse(orderContent);
+            
+            const targetMessage = messageOrder.find(m => m.id === message.id);
+            if (targetMessage) {
+                targetMessage.id = newMessageId;
+                const orderWritable = await orderHandle.createWritable();
+                await orderWritable.write(JSON.stringify(messageOrder, null, 2));
+                await orderWritable.close();
+            }
+            
+            // 更新消息对象
+            message.id = newMessageId;
+            
+            // 更新DOM元素的data-message-id属性
+            const messageElement = document.querySelector(`.message[data-message-id="${message.id}"]`);
+            if (messageElement) {
+                messageElement.dataset.messageId = newMessageId;
+            }
         }
-        
-        // 更新消息对象
-        message.filename = newName;
     } catch (error) {
         console.error('重命名消息文件失败:', error);
+        throw error;
+    }
+}
+
+// 添加更新文件夹功能
+async function updateFolders() {
+    if (!directoryHandle) {
+        alert(isEnglish ? 'Please select a storage location first' : '请先选择存储位置');
+        return;
+    }
+
+    try {
+        // 扫描所有文件夹
+        for await (const entry of directoryHandle.values()) {
+            if (entry.kind === 'directory') {
+                // 检查是否已经是对话文件夹
+                const isExistingConversation = conversations.some(c => c.id === entry.name);
+                if (!isExistingConversation) {
+                    // 创建新的对话对象
+                    const conversation = {
+                        id: entry.name,
+                        title: entry.name,
+                        handle: entry,
+                        subFolders: new Map(),
+                        currentFolder: 'main'
+                    };
+                    
+                    // 扫描子文件夹
+                    await scanSubFolders(entry, conversation.subFolders, '');
+                    
+                    // 创建或更新 messages_order.json
+                    await initializeMessageOrder(entry);
+                    
+                    conversations.push(conversation);
+                }
+            }
+        }
+        
+        // 保存配置
+        await saveConfig();
+        
+        // 重新渲染对话列表
+        renderConversationsList();
+        
+        alert(isEnglish ? 'Folders updated successfully' : '文件夹更新成功');
+    } catch (error) {
+        console.error('更新文件夹失败:', error);
+        alert(isEnglish ? 'Failed to update folders' : '更新文件夹失败');
+    }
+}
+
+// 初始化消息顺序文件
+async function initializeMessageOrder(folderHandle) {
+    try {
+        // 检查是否已存在 messages_order.json
+        let messageOrder = [];
+        try {
+            const orderHandle = await folderHandle.getFileHandle('messages_order.json');
+            const orderFile = await orderHandle.getFile();
+            const orderContent = await orderFile.text();
+            messageOrder = JSON.parse(orderContent);
+        } catch {
+            // 文件不存在，创建新的
+            messageOrder = [];
+        }
+        
+        // 扫描文件夹中的所有文件
+        for await (const entry of folderHandle.values()) {
+            if (entry.kind === 'file' && entry.name !== 'messages_order.json') {
+                const isTextFile = entry.name.endsWith('.txt');
+                const messageId = isTextFile ? entry.name.replace('.txt', '') : Date.now().toString();
+                
+                // 检查是否已在消息列表中
+                const existingMessage = messageOrder.find(m => 
+                    (m.type === 'text' && `${m.id}.txt` === entry.name) ||
+                    (m.type === 'file' && m.filename === entry.name)
+                );
+                
+                if (!existingMessage) {
+                    messageOrder.push({
+                        id: messageId,
+                        type: isTextFile ? 'text' : 'file',
+                        filename: isTextFile ? `${messageId}.txt` : entry.name,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }
+        }
+        
+        // 保存更新后的消息顺序
+        const orderHandle = await folderHandle.getFileHandle('messages_order.json', { create: true });
+        const writable = await orderHandle.createWritable();
+        await writable.write(JSON.stringify(messageOrder, null, 2));
+        await writable.close();
+    } catch (error) {
+        console.error('初始化消息顺序文件失败:', error);
         throw error;
     }
 }
