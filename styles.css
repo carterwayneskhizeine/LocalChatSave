@@ -2,7 +2,7 @@
     /* 亮色主题变量 */
     --primary-color: #4d76ae;
     --secondary-color: #1557b0;
-    --background-color: #e7e7e7;
+    --background-color: #ffffff;
     --accent-color: #ef233c;
     --text-color: #2b2d42;
     --sidebar-width: 260px;
@@ -81,6 +81,9 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: var(--background-color);
     color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .app-container {
@@ -1539,4 +1542,24 @@ textarea {
     background-color: var(--input-bg);
     color: var(--text-color);
     border-color: var(--border-color);
+}
+
+/* 工具面板的基础样式 */
+.tool-panel {
+    display: none;  /* 默认隐藏所有工具面板 */
+}
+
+/* 活动工具面板的样式 */
+.tool-panel.active {
+    display: block;  /* 显示当前活动的工具面板 */
+}
+
+/* 聊天容器的基础样式 */
+.chat-container {
+    display: none;  /* 默认隐藏聊天容器 */
+}
+
+/* 活动聊天容器的样式 */
+.chat-container.active {
+    display: flex;  /* 显示当前活动的聊天容器 */
 }

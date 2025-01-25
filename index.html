@@ -7,150 +7,151 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <button class="settings-btn">
-                <span data-text="设置">设置</span>
-            </button>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button id="settingsBtn" class="settings-btn">
+                    <span class="settings-icon">⚙️</span>
+                    <span>设置</span>
+                </button>
+                <button id="newChatBtn" class="new-chat-btn">新建对话</button>
+            </div>
+            <div id="conversationsList" class="conversations-list"></div>
         </div>
-        <div class="conversation-list"></div>
-        <div class="new-chat-btn" onclick="createNewConversation()">
-            <span data-text="新建文件夹">新建文件夹</span>
+        <div class="main-content">
+            <button class="sidebar-toggle-btn" id="sidebarToggleBtn">⛶</button>
+            <button class="expand-btn" id="expandBtn">⛶</button>
+            
+            <div class="function-switch">
+                <button data-tool="chat" class="active" data-text="聊天模式">聊天模式</button>
+                <button data-tool="editor" data-text="图片编辑">图片编辑</button>
+                <button data-tool="calculator" data-text="比例计算">比例计算</button>
+            </div>
+
+            <div class="chat-container active-tool">
+                <div id="messagesContainer" class="messages"></div>
+                <div class="input-area">
+                    <div class="input-container">
+                        <div id="filePreviewArea" class="file-preview-area"></div>
+                        <textarea id="messageInput" placeholder="输入消息..."></textarea>
+                        <div class="button-group">
+                            <button class="file-btn">
+                                <input type="file" id="fileInput" multiple>
+                                <span class="file-btn-text">选择文件</span>
+                            </button>
+                            <button id="sendButton" class="send-btn">发送</button>
+                        </div>
+                    </div>
+                </div>
+                <button id="scrollBottomBtn" class="scroll-bottom-btn" title="跳转到底部">⬇</button>
+            </div>
+
+            <div class="editor-panel tool-panel">
+                <div class="canvas-wrapper">
+                    <div class="canvas-container">
+                        <canvas id="canvas"></canvas>
+                        <div class="drop-zone" id="drop-zone">
+                            <p data-text="拖放图片到此处或点击上传">拖放图片到此处或点击上传</p>
+                        </div>
+                    </div>
+                </div>
+                <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+                <div class="button-row">
+                    <button class="icon-button rotate-btn" title="旋转">↻</button>
+                    <button class="icon-button flip-h-btn" title="水平翻转">⇋</button>
+                    <button class="icon-button flip-v-btn" title="垂直翻转">⇅</button>
+                    <button class="icon-button reset-btn" title="重置">⟲</button>
+                    <div class="dropdown">
+                        <button class="icon-button download-btn" title="下载">⭳</button>
+                        <div class="dropdown-content">
+                            <button id="downloadJPG">JPG格式</button>
+                            <button id="downloadPNG">PNG格式</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="control-panel">
+                    <div class="control-group">
+                        <div class="dropdown">
+                            <button class="dropdown-btn">预设分辨率</button>
+                            <div class="dropdown-content">
+                                <button data-resolution="512">512 × 512</button>
+                                <button data-resolution-width="512" data-resolution-height="288">512 × 288</button>
+                                <button data-resolution-width="768" data-resolution-height="320">768 × 320</button>
+                                <button data-resolution-width="768" data-resolution-height="512">768 × 512</button>
+                            </div>
+                        </div>
+                        <div class="dropdown">
+                            <button class="dropdown-btn">预设比例</button>
+                            <div class="dropdown-content">
+                                <button data-aspect="16:9">16:9</button>
+                                <button data-aspect="9:16">9:16</button>
+                                <button data-aspect="4:3">4:3</button>
+                                <button data-aspect="1:1">1:1</button>
+                            </div>
+                        </div>
+                        <input type="number" id="widthInput" placeholder="宽度">
+                        <span>×</span>
+                        <input type="number" id="heightInput" placeholder="高度">
+                        <button onclick="setResolution()">应用</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="calculator-panel tool-panel">
+                <div class="calculator-container">
+                    <div class="ratio-buttons">
+                        <button class="ratio-btn" data-ratio="1:1">1:1</button>
+                        <button class="ratio-btn" data-ratio="4:3">4:3</button>
+                        <button class="ratio-btn" data-ratio="16:9">16:9</button>
+                        <button class="ratio-btn" data-ratio="2:1">2:1</button>
+                    </div>
+                    <div class="input-row">
+                        <label class="width-label" data-text="宽度">宽:</label>
+                        <input type="number" id="valueA">
+                        <label class="height-label" data-text="高度">高:</label>
+                        <input type="number" id="valueB">
+                    </div>
+                    <div class="input-row">
+                        <label class="width-label" data-text="宽度">宽:</label>
+                        <input type="number" id="valueC">
+                        <label class="height-label" data-text="高度">高:</label>
+                        <input type="number" id="valueD">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="main-content">
-        <button class="sidebar-toggle-btn" onclick="toggleSidebar()">☰</button>
-        <button class="expand-btn" onclick="toggleExpand()">⤢</button>
-        
-        <div class="function-switch">
-            <button data-tool="chat" class="active" data-text="聊天模式">聊天模式</button>
-            <button data-tool="editor" data-text="图片编辑">图片编辑</button>
-            <button data-tool="calculator" data-text="比例计算">比例计算</button>
-        </div>
-
-        <div class="chat-panel active-tool">
-            <div class="current-path"></div>
-            <div class="messages-container"></div>
-            <div class="input-container">
-                <textarea id="messageInput" placeholder="输入消息..."></textarea>
-                <button onclick="sendMessage()">发送</button>
-            </div>
-            <button id="scrollBottomBtn" class="scroll-bottom-btn" title="跳转到底部">⬇</button>
-        </div>
-
-        <div class="editor-panel tool-panel">
-            <div class="canvas-wrapper">
-                <div class="canvas-container">
-                    <canvas id="canvas"></canvas>
-                    <div class="drop-zone" id="drop-zone">
-                        <p data-text="拖放图片到此处或点击上传">拖放图片到此处或点击上传</p>
-                    </div>
-                </div>
-            </div>
-            <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
-            <div class="button-row">
-                <button class="icon-button rotate-btn" title="旋转">↻</button>
-                <button class="icon-button flip-h-btn" title="水平翻转">⇋</button>
-                <button class="icon-button flip-v-btn" title="垂直翻转">⇅</button>
-                <button class="icon-button reset-btn" title="重置">⟲</button>
-                <div class="dropdown">
-                    <button class="icon-button download-btn" title="下载">⭳</button>
-                    <div class="dropdown-content">
-                        <button id="downloadJPG">JPG格式</button>
-                        <button id="downloadPNG">PNG格式</button>
-                    </div>
-                </div>
-            </div>
-            <div class="control-panel">
-                <div class="control-group">
-                    <div class="dropdown">
-                        <button class="dropdown-btn">预设分辨率</button>
-                        <div class="dropdown-content">
-                            <button data-resolution="512">512 × 512</button>
-                            <button data-resolution-width="512" data-resolution-height="288">512 × 288</button>
-                            <button data-resolution-width="768" data-resolution-height="320">768 × 320</button>
-                            <button data-resolution-width="768" data-resolution-height="512">768 × 512</button>
-                        </div>
-                    </div>
-                    <div class="dropdown">
-                        <button class="dropdown-btn">预设比例</button>
-                        <div class="dropdown-content">
-                            <button data-aspect="16:9">16:9</button>
-                            <button data-aspect="9:16">9:16</button>
-                            <button data-aspect="4:3">4:3</button>
-                            <button data-aspect="1:1">1:1</button>
-                        </div>
-                    </div>
-                    <input type="number" id="widthInput" placeholder="宽度">
-                    <span>×</span>
-                    <input type="number" id="heightInput" placeholder="高度">
-                    <button onclick="setResolution()">应用</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="calculator-panel tool-panel">
-            <div class="calculator-container">
-                <div class="ratio-buttons">
-                    <button class="ratio-btn" data-ratio="1:1">1:1</button>
-                    <button class="ratio-btn" data-ratio="4:3">4:3</button>
-                    <button class="ratio-btn" data-ratio="16:9">16:9</button>
-                    <button class="ratio-btn" data-ratio="2:1">2:1</button>
-                </div>
-                <div class="input-row">
-                    <label class="width-label" data-text="宽度">宽:</label>
-                    <input type="number" id="valueA">
-                    <label class="height-label" data-text="高度">高:</label>
-                    <input type="number" id="valueB">
-                </div>
-                <div class="input-row">
-                    <label class="width-label" data-text="宽度">宽:</label>
-                    <input type="number" id="valueC">
-                    <label class="height-label" data-text="高度">高:</label>
-                    <input type="number" id="valueD">
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- 设置窗口 -->
     <div id="settingsModal" class="settings-modal">
         <div class="settings-window">
             <div class="settings-header">
-                <div class="settings-title" data-text="设置">设置</div>
-                <button class="settings-close" onclick="toggleSettings()">×</button>
+                <div class="settings-title">设置</div>
+                <button class="settings-close" id="settingsCloseBtn">×</button>
             </div>
             <div class="settings-content">
-                <div class="settings-item">
-                    <span data-text="主题">主题</span>
-                    <button class="theme-toggle-btn" onclick="toggleTheme()">切换主题</button>
+                <div class="settings-section">
+                    <div class="settings-section-title">常规设置</div>
+                    <div class="settings-item">
+                        <span class="settings-item-label">主题</span>
+                        <button id="themeToggleBtn" class="theme-toggle-btn">切换主题</button>
+                    </div>
+                    <div class="settings-item">
+                        <span class="settings-item-label">语言</span>
+                        <button id="langToggleBtn" class="lang-toggle-btn">EN</button>
+                    </div>
                 </div>
-                <div class="settings-item">
-                    <span data-text="语言">语言</span>
-                    <button class="lang-toggle-btn" onclick="toggleLanguage()">中</button>
-                </div>
-                <div class="settings-item">
-                    <span data-text="存储位置">存储位置</span>
-                    <button class="select-dir-btn" onclick="selectCustomDirectory()">选择存储位置</button>
-                </div>
-                <div class="settings-item">
-                    <span data-text="更新">更新</span>
-                    <button class="update-folder-btn" onclick="updateFolders()">更新文件夹</button>
+                <div class="settings-section">
+                    <div class="settings-section-title">存储设置</div>
+                    <div class="settings-item">
+                        <span class="settings-item-label">存储位置</span>
+                        <div id="selectDirContainer"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div id="subfoldersModal" class="subfolders-modal">
-        <div class="subfolders-window">
-            <div class="subfolders-header">
-                <div class="subfolders-title" data-text="子文件夹">子文件夹</div>
-                <button class="subfolders-close" onclick="closeSubfoldersModal()">×</button>
-            </div>
-            <div id="subfoldersContent" class="subfolders-content"></div>
         </div>
     </div>
 
     <script src="script.js"></script>
 </body>
-</html>
+</html> 
