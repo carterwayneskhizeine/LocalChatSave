@@ -1563,3 +1563,34 @@ textarea {
 .chat-container.active {
     display: flex;  /* 显示当前活动的聊天容器 */
 }
+
+/* 分辨率信息样式 */
+.resolution-info {
+    text-align: center;
+    margin: 12px 0;
+    color: var(--text-color);
+    font-size: 14px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.canvas-resolution,
+.image-resolution {
+    background-color: var(--message-bg);
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    min-width: 120px;
+}
+
+.image-resolution {
+    display: none;  /* 默认隐藏图片分辨率信息，直到加载图片 */
+}
+
+/* 暗色主题适配 */
+[data-theme="dark"] .canvas-resolution,
+[data-theme="dark"] .image-resolution {
+    background-color: var(--message-bg);
+    border-color: var(--border-color);
+}

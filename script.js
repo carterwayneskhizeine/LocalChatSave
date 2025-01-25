@@ -35,11 +35,15 @@ class ImageEditor {
         this.imageY = 0;
         this.lastTouchDistance = 0;
         this.isRotationMode = false;
-
+        
+        // 添加分辨率信息元素的引用
+        this.canvasResolutionEl = document.querySelector('.canvas-resolution');
+        this.imageResolutionEl = document.querySelector('.image-resolution');
+        
         this.initializeCanvas();
         this.setupEventListeners();
-        this.handleThemeChange(); // 初始化背景颜色
-        window.addEventListener('themeChange', () => this.handleThemeChange());
+        this.handleThemeChange();
+        this.updateResolutionInfo(); // 初始化时更新分辨率信息
     }
 
     initializeCanvas() {
@@ -64,6 +68,7 @@ class ImageEditor {
         this.canvas.width = width;
         this.canvas.height = height;
         this.drawImage();
+        this.updateResolutionInfo(); // 添加这行
     }
 
     setupEventListeners() {
@@ -388,8 +393,10 @@ class ImageEditor {
                 this.imageY = 0;
                 this.fitImageToCanvas();
                 
-                // 隐藏 drop-zone（只在首次加载/替换后隐藏）
+                // 隐藏 drop-zone
                 document.getElementById('drop-zone').style.display = 'none';
+                
+                this.updateResolutionInfo(); // 添加这行
             };
             img.src = e.target.result;
         };
@@ -482,6 +489,24 @@ class ImageEditor {
         } else {
             this.ctx.fillStyle = isDarkMode ? '#1e1e1e' : '#ffffff';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+
+    // 添加更新分辨率信息的方法
+    updateResolutionInfo() {
+        // 更新画布分辨率
+        if (this.canvasResolutionEl) {
+            this.canvasResolutionEl.textContent = `画布: ${this.canvas.width} × ${this.canvas.height}`;
+        }
+        
+        // 更新图片分辨率
+        if (this.imageResolutionEl) {
+            if (this.image) {
+                this.imageResolutionEl.textContent = `图片: ${this.image.width} × ${this.image.height}`;
+                this.imageResolutionEl.style.display = 'inline-block';
+            } else {
+                this.imageResolutionEl.style.display = 'none';
+            }
         }
     }
 }
