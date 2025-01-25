@@ -467,8 +467,10 @@ async function createNewConversation() {
             return;
         }
 
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const newConversationName = `对话_${timestamp}`;
+        const date = new Date();
+        date.setHours(date.getHours() + 8);
+        const timestamp = date.toISOString().replace(/[:.]/g, '-');
+        const newConversationName = `${timestamp}`;
         const newDirHandle = await directoryHandle.getDirectoryHandle(newConversationName, { create: true });
         
         const conversation = {

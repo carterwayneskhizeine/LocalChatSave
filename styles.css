@@ -5,7 +5,7 @@
     --background-color: #e7e7e7;
     --accent-color: #ef233c;
     --text-color: #2b2d42;
-    --sidebar-width: 260px;
+    --sidebar-width: 320px;
     --message-bg: white;
     --border-color: #e0e0e0;
     --hover-color: #f5f5f5;
@@ -1008,8 +1008,8 @@ textarea {
 
 .sidebar-toggle-btn {
     position: fixed;
-    top: 50px;
-    left: calc(var(--sidebar-width) + 20px);
+    bottom: 0px;
+    left: calc(var(--sidebar-width) + 5px);
     background: none;
     border: none;
     color: var(--text-color);
@@ -1035,7 +1035,7 @@ textarea {
 }
 
 .sidebar.hidden + .main-content .sidebar-toggle-btn {
-    left: 20px;
+    left: 0px;
 }
 
 .image-info {
