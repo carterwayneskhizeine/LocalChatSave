@@ -411,7 +411,7 @@ body {
     color: var(--secondary-color);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     padding-top: 8px;
     border-top: 1px solid var(--border-color);
 }
@@ -489,9 +489,11 @@ body {
 
 .message-actions {
     display: flex;
+    flex-direction: column;
     gap: 8px;
     opacity: 0;
     transition: opacity 0.2s;
+    margin-left: 12px;
 }
 
 .message:hover .message-actions {
@@ -499,7 +501,8 @@ body {
 }
 
 .message-edit-btn,
-.message-delete-btn {
+.message-delete-btn,
+.message-copy-btn {
     padding: 4px 8px;
     background-color: transparent;
     border: 1px solid var(--secondary-color);
@@ -508,9 +511,12 @@ body {
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s;
+    width: 60px;
+    text-align: center;
 }
 
-.message-edit-btn:hover {
+.message-edit-btn:hover,
+.message-copy-btn:hover {
     background-color: var(--secondary-color);
     color: white;
 }
@@ -523,6 +529,11 @@ body {
 .message-delete-btn:hover {
     background-color: var(--accent-color);
     color: white;
+}
+
+/* 删除旧的复制按钮样式 */
+.copy-btn {
+    display: none;
 }
 
 .message.editing .message-content {
@@ -576,22 +587,6 @@ body {
 
 .edit-cancel-btn:hover {
     background-color: var(--hover-color);
-}
-
-.copy-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 4px 8px;
-    background-color: #e9ecef;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.copy-btn:hover {
-    background-color: #dee2e6;
 }
 
 .input-area {
@@ -1044,28 +1039,26 @@ textarea {
 }
 
 .image-info {
-    margin-top: 8px;
-    font-size: 12px;
-    color: var(--secondary-color);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: var(--secondary-color);
 }
 
 .image-name {
     cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 3px;
-    transition: background-color 0.2s;
+    color: var(--text-color);
 }
 
 .image-name:hover {
-    background-color: var(--hover-color);
+    text-decoration: underline;
 }
 
 .image-resolution {
-    color: var(--text-color);
-    opacity: 0.7;
+    color: var(--secondary-color);
+    font-family: monospace;
 }
 
 .image-name-input {
@@ -1593,4 +1586,30 @@ textarea {
 [data-theme="dark"] .image-resolution {
     background-color: var(--message-bg);
     border-color: var(--border-color);
+}
+
+.chat-image-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: var(--secondary-color);
+}
+
+.chat-image-name {
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.chat-image-name:hover {
+    text-decoration: underline;
+}
+
+.chat-image-resolution {
+    color: var(--secondary-color);
+    font-family: monospace;
+    padding: 2px 6px;
+    background-color: var(--hover-color);
+    border-radius: 4px;
 }

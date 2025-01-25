@@ -254,13 +254,13 @@ class ImageEditor {
         document.getElementById('downloadPNG').onclick = () => this.downloadImage('png');
 
         // 手动设置分辨率
-        document.querySelector('.control-group button').onclick = () => {
+        document.getElementById('setResolution').addEventListener('click', () => {
             const width = parseInt(document.getElementById('widthInput').value);
             const height = parseInt(document.getElementById('heightInput').value);
             if (width > 0 && height > 0) {
                 this.setCanvasSize(width, height);
             }
-        };
+        });
 
         // 触摸事件
         this.canvas.addEventListener('touchstart', (e) => {
@@ -514,7 +514,6 @@ class ImageEditor {
 // 在文件开头添加比例计算器类
 class ProportionCalculator {
     constructor() {
-        // 验证必要元素是否存在
         this.valueA = document.getElementById('valueA');
         this.valueB = document.getElementById('valueB');
         this.valueC = document.getElementById('valueC');
@@ -524,96 +523,112 @@ class ProportionCalculator {
             throw new Error('找不到计算器必要的输入元素');
         }
         
-        // 根据设备类型设置不同的默认值
+        // 根据设备类型设置默认值
         if (isMobileDevice()) {
             this.valueC.value = '384';
             this.valueD.value = '288';
         }
         
-        // A和B的值保持4:3不变
+        // 初始化比例为4:3
         this.valueA.value = '4';
         this.valueB.value = '3';
         
         this.setupEventListeners();
-        // 初始化时计算一次
-        this.calculateFromC();
-        // 初始化时更新裁剪界面的分辨率
+        this.calculateFromC(); // 初始化计算
         this.updateCropResolution();
     }
 
     setupEventListeners() {
-        document.getElementById('valueC').addEventListener('input', () => {
+        // 监听C和D的变化
+        this.valueC.addEventListener('input', () => {
             this.calculateFromC();
             this.updateCropResolution();
         });
         
-        document.getElementById('valueD').addEventListener('input', () => {
+        this.valueD.addEventListener('input', () => {
             this.calculateFromD();
             this.updateCropResolution();
         });
+
+        // 新增：监听A和B的变化
+        this.valueA.addEventListener('input', () => {
+            this.calculateBasedOnInput();
+        });
         
-        // 添加比例按钮点击事件
+        this.valueB.addEventListener('input', () => {
+            this.calculateBasedOnInput();
+        });
+
+        // 比例按钮点击事件
         document.querySelectorAll('.ratio-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const ratio = e.target.dataset.ratio;
                 const [a, b] = ratio.split(':').map(Number);
-                document.getElementById('valueA').value = a;
-                document.getElementById('valueB').value = b;
-                // 清空 C 和 D 的值
-                document.getElementById('valueC').value = '';
-                document.getElementById('valueD').value = '';
+                this.valueA.value = a;
+                this.valueB.value = b;
+                // 清空C/D并触发计算
+                this.valueC.value = '';
+                this.valueD.value = '';
+                this.calculateBasedOnInput(); // 触发重新计算
+                this.updateCropResolution();
             });
         });
     }
 
-    calculateFromC() {
-        const a = parseFloat(document.getElementById('valueA').value);
-        const b = parseFloat(document.getElementById('valueB').value);
-        const c = parseFloat(document.getElementById('valueC').value);
-        
-        if(isNaN(a) || isNaN(b) || isNaN(c)) {
-            return;
+    // 新增：智能计算逻辑
+    calculateBasedOnInput() {
+        if (this.valueC.value && !this.valueD.value) {
+            this.calculateFromC();
+        } else if (this.valueD.value && !this.valueC.value) {
+            this.calculateFromD();
         }
+        // 如果两个值都存在，不做自动计算避免冲突
+    }
+
+    calculateFromC() {
+        const a = parseFloat(this.valueA.value);
+        const b = parseFloat(this.valueB.value);
+        const c = parseFloat(this.valueC.value);
         
-        if(b === 0 || a === 0) {
+        if (isNaN(a) || isNaN(b) || isNaN(c)) return;
+        
+        if (b === 0 || a === 0) {
             alert('分母不能为0！');
             return;
         }
         
         const d = Math.round((b * c) / a);
-        document.getElementById('valueD').value = d;
+        this.valueD.value = d;
     }
 
     calculateFromD() {
-        const a = parseFloat(document.getElementById('valueA').value);
-        const b = parseFloat(document.getElementById('valueB').value);
-        const d = parseFloat(document.getElementById('valueD').value);
+        const a = parseFloat(this.valueA.value);
+        const b = parseFloat(this.valueB.value);
+        const d = parseFloat(this.valueD.value);
         
-        if(isNaN(a) || isNaN(b) || isNaN(d)) {
-            return;
-        }
+        if (isNaN(a) || isNaN(b) || isNaN(d)) return;
         
-        if(b === 0 || a === 0) {
+        if (b === 0 || a === 0) {
             alert('分母不能为0！');
             return;
         }
         
         const c = Math.round((a * d) / b);
-        document.getElementById('valueC').value = c;
+        this.valueC.value = c;
     }
 
-    // 添加新方法：更新裁剪界面的分辨率输入框
     updateCropResolution() {
         const widthInput = document.getElementById('widthInput');
         const heightInput = document.getElementById('heightInput');
-        const valueC = document.getElementById('valueC').value;
-        const valueD = document.getElementById('valueD').value;
-        
-        if (valueC && valueD) {
-            widthInput.value = valueC;
-            heightInput.value = valueD;
-        }
+        // 允许清空输入框
+        widthInput.value = this.valueC.value || '';
+        heightInput.value = this.valueD.value || '';
     }
+}
+
+// 添加设备检测函数
+function isMobileDevice() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 // 在文件末尾添加功能切换逻辑
@@ -1843,25 +1858,14 @@ async function renderMessage(message) {
     if (message.type === 'text') {
         // 检查是否是代码
         if (isCode(message.content)) {
-            contentContainer.className += ' code';
+            contentContainer.className = 'message-content code';
             const pre = document.createElement('pre');
             const code = document.createElement('code');
             code.textContent = message.content;
             pre.appendChild(code);
-            
-            const copyBtn = document.createElement('button');
-            copyBtn.className = 'copy-btn';
-            copyBtn.textContent = isEnglish ? 'Copy' : '复制';
-            copyBtn.onclick = () => {
-                navigator.clipboard.writeText(message.content);
-                copyBtn.textContent = isEnglish ? 'Copied' : '已复制';
-                setTimeout(() => copyBtn.textContent = isEnglish ? 'Copy' : '复制', 2000);
-            };
-            
-            contentContainer.appendChild(copyBtn);
             contentContainer.appendChild(pre);
             
-            // 添加文件信息
+            // 创建文件信息容器
             const fileInfo = document.createElement('div');
             fileInfo.className = 'message-file-info';
             
@@ -1877,8 +1881,19 @@ async function renderMessage(message) {
             const folderPath = conversation.currentFolder === 'main' ? conversation.title : `${conversation.title}/${conversation.currentFolder}`;
             folder.innerHTML = `<span class="message-folder-icon">📁</span>${folderPath}`;
             
+            // 创建复制按钮
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'message-copy-btn';
+            copyBtn.textContent = isEnglish ? 'Copy' : '复制';
+            copyBtn.onclick = () => {
+                navigator.clipboard.writeText(message.content);
+                copyBtn.textContent = isEnglish ? 'Copied' : '已复制';
+                setTimeout(() => copyBtn.textContent = isEnglish ? 'Copy' : '复制', 2000);
+            };
+            
             fileInfo.appendChild(filename);
             fileInfo.appendChild(folder);
+            fileInfo.appendChild(copyBtn);
             contentContainer.appendChild(fileInfo);
         } else {
             contentContainer.textContent = message.content;
@@ -1919,18 +1934,18 @@ async function renderMessage(message) {
             
             // 创建图片信息容器
             const imageInfo = document.createElement('div');
-            imageInfo.className = 'image-info';
+            imageInfo.className = 'chat-image-info';
             
             // 创建图片名称元素
             const imageName = document.createElement('span');
-            imageName.className = 'image-name';
+            imageName.className = 'chat-image-name';
             imageName.textContent = message.filename;
             imageName.title = isEnglish ? 'Click to rename' : '点击重命名';
             imageName.onclick = () => enterImageRenameMode(imageName, message);
             
             // 创建图片分辨率元素
             const imageResolution = document.createElement('span');
-            imageResolution.className = 'image-resolution';
+            imageResolution.className = 'chat-image-resolution';
             
             // 获取图片分辨率
             img.onload = () => {
@@ -3127,6 +3142,7 @@ async function initializeMessageOrder(folderHandle) {
 document.addEventListener('DOMContentLoaded', function() {
     let imageEditorInstance = null;
     let calculatorInstance = null;
+    let imageEditorState = null; // 添加状态保存变量
     
     // 获取所有工具切换按钮
     const toolButtons = document.querySelectorAll('.function-switch button');
@@ -3141,6 +3157,21 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 工具切换函数
     function switchTool(tool) {
+        // 在切换前保存图片编辑器的状态
+        if (imageEditorInstance && tool !== 'editor') {
+            imageEditorState = {
+                image: imageEditorInstance.image,
+                scale: imageEditorInstance.scale,
+                rotation: imageEditorInstance.rotation,
+                flipX: imageEditorInstance.flipX,
+                flipY: imageEditorInstance.flipY,
+                imageX: imageEditorInstance.imageX,
+                imageY: imageEditorInstance.imageY,
+                canvasWidth: imageEditorInstance.canvas.width,
+                canvasHeight: imageEditorInstance.canvas.height
+            };
+        }
+        
         // 移除所有面板的active类
         chatContainer.classList.remove('active');
         editorPanel.classList.remove('active');
@@ -3159,9 +3190,6 @@ document.addEventListener('DOMContentLoaded', function() {
         switch(tool) {
             case 'chat':
                 chatContainer.classList.add('active');
-                // 销毁其他工具实例
-                imageEditorInstance = null;
-                calculatorInstance = null;
                 break;
                 
             case 'editor':
@@ -3171,6 +3199,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!imageEditorInstance && editorPanel.offsetParent !== null) {
                         try {
                             imageEditorInstance = new ImageEditor();
+                            // 如果有保存的状态，恢复它
+                            if (imageEditorState) {
+                                imageEditorInstance.image = imageEditorState.image;
+                                imageEditorInstance.scale = imageEditorState.scale;
+                                imageEditorInstance.rotation = imageEditorState.rotation;
+                                imageEditorInstance.flipX = imageEditorState.flipX;
+                                imageEditorInstance.flipY = imageEditorState.flipY;
+                                imageEditorInstance.imageX = imageEditorState.imageX;
+                                imageEditorInstance.imageY = imageEditorState.imageY;
+                                
+                                // 恢复画布大小
+                                imageEditorInstance.setCanvasSize(
+                                    imageEditorState.canvasWidth,
+                                    imageEditorState.canvasHeight
+                                );
+                                
+                                // 如果有图片，更新显示
+                                if (imageEditorInstance.image) {
+                                    document.getElementById('drop-zone').style.display = 'none';
+                                    imageEditorInstance.drawImage();
+                                    imageEditorInstance.updateResolutionInfo();
+                                }
+                            }
+                            
                             // 添加resize监听
                             window.addEventListener('resize', () => {
                                 if (imageEditorInstance && editorPanel.classList.contains('active')) {
@@ -3180,9 +3232,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         } catch (error) {
                             console.error('初始化图片编辑器失败:', error);
                         }
+                    } else if (imageEditorInstance) {
+                        // 如果实例已存在，只需要重新绘制
+                        imageEditorInstance.drawImage();
+                        imageEditorInstance.updateResolutionInfo();
                     }
                 }, 100);
-                calculatorInstance = null;
                 break;
                 
             case 'calculator':
@@ -3192,12 +3247,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!calculatorInstance && calculatorPanel.offsetParent !== null) {
                         try {
                             calculatorInstance = new ProportionCalculator();
+                            console.log('比例计算器初始化成功');
                         } catch (error) {
                             console.error('初始化比例计算器失败:', error);
+                            alert('初始化比例计算器失败，请刷新页面重试');
                         }
                     }
                 }, 100);
-                imageEditorInstance = null;
                 break;
         }
     }
