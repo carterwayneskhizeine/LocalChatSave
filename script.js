@@ -2107,7 +2107,7 @@ async function renderMessage(message) {
         // 为图片添加发送按钮
         const sendToEditorBtn = document.createElement('button');
         sendToEditorBtn.className = 'message-edit-btn';
-        sendToEditorBtn.textContent = isEnglish ? 'Send' : '发送';
+        sendToEditorBtn.textContent = isEnglish ? 'Send' : 'Send';
         sendToEditorBtn.onclick = async () => {
             // 读取图片文件
             const fileContent = await readFile(message.filename);
@@ -2366,39 +2366,39 @@ function applyLanguage() {
     if (settingsBtn) {
         const settingsText = settingsBtn.querySelector('span:last-child');
         if (settingsText) {
-            settingsText.textContent = isEnglish ? 'Settings' : '设置';
+            settingsText.textContent = isEnglish ? 'Settings' : 'Settings';
         }
     }
 
     // 更新新建对话按钮
     const newChatBtn = document.getElementById('newChatBtn');
     if (newChatBtn) {
-        newChatBtn.textContent = isEnglish ? 'New Chat' : '新建对话';
+        newChatBtn.textContent = isEnglish ? 'New Chat' : 'New Chat';
     }
 
     // 更新发送按钮
     const sendButton = document.getElementById('sendButton');
     if (sendButton) {
-        sendButton.textContent = isEnglish ? 'Send' : '发送';
+        sendButton.textContent = isEnglish ? 'Send' : 'Send';
     }
 
     // 更新消息输入框占位符
     const messageInput = document.getElementById('messageInput');
     if (messageInput) {
-        messageInput.placeholder = isEnglish ? 'Type a message...' : '输入消息...';
+        messageInput.placeholder = isEnglish ? 'Type a message...' : 'Type a message...';
     }
 
     // 更新设置窗口的文本
     const settingsTitle = document.querySelector('.settings-title');
     if (settingsTitle) {
-        settingsTitle.textContent = isEnglish ? 'Settings' : '设置';
+        settingsTitle.textContent = isEnglish ? 'Settings' : 'Settings';
     }
 
     // 更新设置分区标题
     const sectionTitles = document.querySelectorAll('.settings-section-title');
     if (sectionTitles.length >= 2) {
-        sectionTitles[0].textContent = isEnglish ? 'General' : '常规设置';
-        sectionTitles[1].textContent = isEnglish ? 'Storage' : '存储设置';
+        sectionTitles[0].textContent = isEnglish ? 'General' : 'General';
+        sectionTitles[1].textContent = isEnglish ? 'Storage' : 'Storage';
     }
 
     // 更新设置项标签
@@ -2440,7 +2440,7 @@ function applyLanguage() {
     // 更新文件选择按钮文本
     const fileBtnText = document.querySelector('.file-btn-text');
     if (fileBtnText) {
-        fileBtnText.textContent = isEnglish ? 'Choose File' : '选择文件';
+        fileBtnText.textContent = isEnglish ? 'Choose File' : 'File';
     }
 
     // 更新对话操作菜单文本
