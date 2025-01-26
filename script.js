@@ -226,6 +226,9 @@ class ImageEditor {
                     const height = parseInt(button.dataset.resolutionHeight);
                     this.setCanvasSize(width, height);
                 }
+                // 更新输入框的值
+                document.getElementById('widthInput').value = this.canvas.width;
+                document.getElementById('heightInput').value = this.canvas.height;
             });
         });
 
@@ -235,6 +238,9 @@ class ImageEditor {
                 const [w, h] = button.dataset.aspect.split(':').map(Number);
                 const newHeight = Math.round(this.canvas.width * (h / w));
                 this.setCanvasSize(this.canvas.width, newHeight);
+                // 更新输入框的值
+                document.getElementById('widthInput').value = this.canvas.width;
+                document.getElementById('heightInput').value = this.canvas.height;
             });
         });
 
@@ -370,6 +376,9 @@ class ImageEditor {
             this.isDragging = false;
             this.lastTouchDistance = 0;
         });
+
+        // 复制按钮事件
+        document.querySelector('.copy-image-btn').onclick = () => this.copyImageToClipboard();
     }
 
     handleFileSelect(e) {
@@ -507,6 +516,26 @@ class ImageEditor {
             } else {
                 this.imageResolutionEl.style.display = 'none';
             }
+        }
+    }
+
+    async copyImageToClipboard() {
+        if (!this.image) return;
+        
+        try {
+            const blob = await new Promise(resolve => {
+                this.canvas.toBlob(resolve, 'image/png');
+            });
+            
+            if (blob) {
+                await navigator.clipboard.write([
+                    new ClipboardItem({
+                        'image/png': blob
+                    })
+                ]);
+            }
+        } catch (err) {
+            console.error('复制图片失败:', err);
         }
     }
 }

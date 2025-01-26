@@ -61,6 +61,15 @@
                 </div>
                 <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
                 <div class="button-row">
+                    <div class="dropdown">
+                        <button class="dropdown-btn">预设分辨率</button>
+                        <div class="dropdown-content">
+                            <button data-resolution="512">512 × 512</button>
+                            <button data-resolution-width="512" data-resolution-height="288">512 × 288</button>
+                            <button data-resolution-width="768" data-resolution-height="320">768 × 320</button>
+                            <button data-resolution-width="768" data-resolution-height="512">768 × 512</button>
+                        </div>
+                    </div>
                     <button class="icon-button rotate-btn" title="旋转">↻</button>
                     <button class="icon-button flip-h-btn" title="水平翻转">⇋</button>
                     <button class="icon-button flip-v-btn" title="垂直翻转">⇅</button>
@@ -72,27 +81,19 @@
                             <button id="downloadPNG">PNG格式</button>
                         </div>
                     </div>
+                    <div class="dropdown">
+                        <button class="dropdown-btn">预设比例</button>
+                        <div class="dropdown-content">
+                            <button data-aspect="16:9">16:9</button>
+                            <button data-aspect="9:16">9:16</button>
+                            <button data-aspect="4:3">4:3</button>
+                            <button data-aspect="1:1">1:1</button>
+                        </div>
+                    </div>
+                    <button class="icon-button copy-image-btn" title="复制">⎘</button>
                 </div>
                 <div class="control-panel">
                     <div class="control-group">
-                        <div class="dropdown">
-                            <button class="dropdown-btn">预设分辨率</button>
-                            <div class="dropdown-content">
-                                <button data-resolution="512">512 × 512</button>
-                                <button data-resolution-width="512" data-resolution-height="288">512 × 288</button>
-                                <button data-resolution-width="768" data-resolution-height="320">768 × 320</button>
-                                <button data-resolution-width="768" data-resolution-height="512">768 × 512</button>
-                            </div>
-                        </div>
-                        <div class="dropdown">
-                            <button class="dropdown-btn">预设比例</button>
-                            <div class="dropdown-content">
-                                <button data-aspect="16:9">16:9</button>
-                                <button data-aspect="9:16">9:16</button>
-                                <button data-aspect="4:3">4:3</button>
-                                <button data-aspect="1:1">1:1</button>
-                            </div>
-                        </div>
                         <input type="number" id="widthInput" placeholder="宽度">
                         <span>×</span>
                         <input type="number" id="heightInput" placeholder="高度">
