@@ -5,6 +5,8 @@ let directoryHandle = null;
 const CONFIG_FILE = 'chat_config.json';
 let isDarkMode = true;  // 默认为夜间模式
 let isEnglish = false; // 添加语言设置变量
+let fileInputInitialized = false;
+let imageEditorInstance = null;
 
 // 添加子文件夹选择窗口的 HTML
 document.body.insertAdjacentHTML('beforeend', `
@@ -47,8 +49,12 @@ class ImageEditor {
     }
 
     initializeCanvas() {
-        // 设置默认分辨率
-        this.setCanvasSize(512, 384);
+        // 根据设备类型设置不同的默认分辨率
+        if (isMobileDevice()) {
+            this.setCanvasSize(384, 288);
+        } else {
+            this.setCanvasSize(512, 384);
+        }
     }
 
     setCanvasSize(width, height) {
@@ -72,20 +78,52 @@ class ImageEditor {
     }
 
     setupEventListeners() {
-        // 文件拖放到 drop-zone
         const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('imageFileInput');
+        const fileInput = document.getElementById('fileInput');
 
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+        // 使用唯一ID确保只初始化一次
+        if (!window.fileInputInitialized) {
+            const newFileInput = fileInput.cloneNode(true); // 使用true复制所有属性
+            fileInput.parentNode.replaceChild(newFileInput, fileInput);
+            
+            newFileInput.addEventListener('change', (e) => {
+                const activePanel = document.querySelector('.tool-panel.active, .chat-container.active');
+                if (activePanel.classList.contains('editor-panel')) {
+                    this.handleFileSelect(e);
+                    e.target.value = ''; // 只在编辑器模式下清空
+                } else {
+                    handleFileSelect(e); // 聊天模式的处理
+                }
+            });
+
+            window.fileInputInitialized = true;
+        }
+
+        // 绑定点击事件到编辑器中的导入按钮
+        const importImage = document.getElementById('importImage');
+        if (importImage) {
+            importImage.addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+        }
+
+        // 绑定拖放区域的点击事件
+        if (dropZone) {
+            dropZone.addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+        }
+
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.stopPropagation();
             dropZone.classList.add('drag-over');
         });
+
         dropZone.addEventListener('dragleave', () => {
             dropZone.classList.remove('drag-over');
         });
+
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -685,11 +723,6 @@ window.addEventListener('DOMContentLoaded', () => {
     const editorPanel = document.getElementById('imageEditor');
     const calculatorPanel = document.getElementById('calculator');
 
-    // 导入图片按钮点击事件
-    importImage.addEventListener('click', () => {
-        document.getElementById('fileInput').click();
-    });
-
     switchToEditor.addEventListener('click', () => {
         switchToEditor.classList.add('active');
         switchToCalculator.classList.remove('active');
@@ -706,25 +739,56 @@ window.addEventListener('DOMContentLoaded', () => {
         importImage.style.display = 'none'; // 隐藏导入图片按钮
     });
 
+    // 语言切换按钮点击事件
+    languageToggle.addEventListener('click', () => {
+        if (languageToggle.textContent === 'ZH') {
+            languageToggle.textContent = 'EN';
+            document.body.classList.add('en-mode');
+            document.querySelectorAll('[data-lang-zh]').forEach(el => {
+                el.textContent = el.getAttribute('data-lang-en');
+            });
+        } else {
+            languageToggle.textContent = 'ZH';
+            document.body.classList.remove('en-mode');
+            document.querySelectorAll('[data-lang-zh]').forEach(el => {
+                el.textContent = el.getAttribute('data-lang-zh');
+            });
+        }
+    });
+
+    // 检查并恢复上次的主题设置
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) {
+        document.body.classList.add('dark-mode');
+        document.body.classList.remove('light-mode');
+    } else if (localStorage.getItem('darkMode') === 'false') {
+        document.body.classList.remove('dark-mode');
+        document.body.classList.add('light-mode');
+    }
 });
 
 // 初始化应用
 async function initApp() {
     try {
-        // 统一处理文件选择事件
-        document.getElementById('fileInput').addEventListener('change', (e) => {
-            const activePanel = document.querySelector('.tool-panel.active, .chat-container.active');
-            if (activePanel && activePanel.classList.contains('editor-panel') && imageEditorInstance) {
-                // 如果当前是图片编辑模式且实例存在，使用图片编辑器的处理方法
-                imageEditorInstance.handleFileSelect(e);
-            } else {
-                // 否则使用聊天功能的文件处理方法
-                handleFileSelect(e);
-            }
-            // 清空文件输入，确保同一文件可以重复选择
-            e.target.value = '';
-        });
+        // 添加文件选择事件监听
+        // const fileInput = document.getElementById('fileInput');
+        // if (fileInput) {
+        //     fileInput.addEventListener('change', (e) => {
+        //         const activePanel = document.querySelector('.tool-panel.active, .chat-container.active');
+        //         if (activePanel && activePanel.classList.contains('editor-panel') && imageEditorInstance) {
+        //             // 如果当前是图片编辑模式且实例存在，使用图片编辑器的处理方法
+        //             imageEditorInstance.handleFileSelect(e);
+        //         } else {
+        //             // 否则使用聊天功能的文件处理方法
+        //             handleFileSelect(e);
+        //         }
+        //         // 清空文件输入，确保同一文件可以重复选择
+        //         e.target.value = '';
+        //     });
+        // }
 
+        // 不再需要重复添加文件选择事件监听器，因为已经在ImageEditor类中处理了
+        
         // 添加选择存储位置按钮和下拉菜单
         const selectDirContainer = document.getElementById('selectDirContainer');
         
@@ -810,16 +874,6 @@ async function initApp() {
         
         selectDirContainer.appendChild(selectDirBtn);
         selectDirContainer.appendChild(dropdown);
-
-        // 添加文件选择事件监听
-        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-
-        // 点击其他地方关闭下拉菜单
-        document.addEventListener('click', (e) => {
-            if (!selectDirContainer.contains(e.target)) {
-                dropdown.classList.remove('show');
-            }
-        });
 
         // 添加设置按钮点击事件
         document.getElementById('settingsBtn').onclick = toggleSettings;
@@ -1699,6 +1753,12 @@ async function scanConversationFolder(conversation) {
 // 修改 loadConversation 函数
 async function loadConversation(conversationId) {
     try {
+        // 切换到聊天模式
+        const chatButton = document.querySelector('.function-switch button[data-tool="chat"]');
+        if (chatButton) {
+            switchTool('chat');
+        }
+
         currentConversationId = conversationId;
         const conversation = conversations.find(c => c.id === conversationId);
         if (!conversation) return;
@@ -1769,71 +1829,103 @@ async function loadConversation(conversationId) {
 
 // 修改 sendMessage 函数
 async function sendMessage() {
+    // 检查当前是否在聊天模式
+    const chatContainer = document.querySelector('.chat-container');
+    if (!chatContainer.classList.contains('active')) {
+        alert('请切换到聊天模式发送消息');
+        return;
+    }
+
     const input = document.getElementById('messageInput');
     const fileInput = document.getElementById('fileInput');
-    const filePreviewArea = document.getElementById('filePreviewArea');
-    const text = input.value.trim();
+    const message = input.value.trim();
     const files = fileInput.files;
-    
-    if (!text && files.length === 0) return;
-    
+
+    // 如果没有消息且没有文件，不发送
+    if (!message && (!files || files.length === 0)) {
+        return;
+    }
+
+    // 禁用发送按钮，防止重复发送
+    const sendButton = document.getElementById('sendButton');
+    sendButton.disabled = true;
+
     try {
+        // 检查当前对话
         const conversation = conversations.find(c => c.id === currentConversationId);
-        if (!conversation) return;
-        
-        // 获取当前文件夹的句柄
+        if (!conversation) {
+            alert(isEnglish ? 'No active conversation' : '没有活动对话');
+            return;
+        }
+
+        // 获取当前文件夹句柄
         const currentFolderHandle = conversation.currentFolder === 'main' ? 
             conversation.handle : 
             conversation.subFolders.get(conversation.currentFolder).handle;
-        
-        // 发送文本消息
-        if (text) {
-            const messageId = Date.now().toString();
-            const message = {
-                id: messageId,
+
+        if (!currentFolderHandle) {
+            return;
+        }
+
+        // 如果有文本消息，先发送文本消息
+        if (message) {
+            const textMessageObj = {
+                id: Date.now().toString(),
                 type: 'text',
-                content: text,
+                content: message,
                 timestamp: new Date().toISOString()
             };
-            await saveMessage(currentFolderHandle, message);
-            await renderMessage(message);
+            await saveMessage(currentFolderHandle, textMessageObj);
+            await renderMessage(textMessageObj);
         }
-        
-        // 发送文件
-        for (const file of files) {
-            const messageId = Date.now().toString();
-            const fileMessage = {
-                id: messageId,
-                type: 'file',
-                filename: file.name,
-                timestamp: new Date().toISOString()
-            };
-            
-            // 保存文件到当前文件夹
-            const fileHandle = await currentFolderHandle.getFileHandle(file.name, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(file);
-            await writable.close();
-            
-            await saveMessage(currentFolderHandle, fileMessage);
-            await renderMessage(fileMessage);
+
+        // 如果有文件，逐个处理文件
+        if (files && files.length > 0) {
+            for (const file of Array.from(files)) {
+                const fileMessageObj = {
+                    id: Date.now().toString(),
+                    type: 'file',
+                    filename: file.name,
+                    timestamp: new Date().toISOString()
+                };
+
+                // 保存文件到当前文件夹
+                const fileHandle = await currentFolderHandle.getFileHandle(file.name, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(file);
+                await writable.close();
+
+                // 保存文件消息并渲染
+                await saveMessage(currentFolderHandle, fileMessageObj);
+                await renderMessage(fileMessageObj);
+            }
         }
-        
+
         // 清空输入
         input.value = '';
         fileInput.value = '';
+        const filePreviewArea = document.getElementById('filePreviewArea');
         filePreviewArea.innerHTML = '';
-        const dt = new DataTransfer();
-        fileInput.files = dt.files;
+        filePreviewArea.style.display = 'none';
+
+        // 滚动到底部
+        const messagesContainer = document.getElementById('messages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } catch (error) {
         console.error('发送消息失败:', error);
-        alert(isEnglish ? 'Failed to send message' : '发送消息失败');
+    } finally {
+        // 重新启用发送按钮
+        sendButton.disabled = false;
     }
 }
 
-// 修改 saveMessage 函数，使用传入的文件夹句柄
+// 修改 saveMessage 函数
 async function saveMessage(folderHandle, message) {
     try {
+        if (!folderHandle) {
+            throw new Error('Invalid folder handle');
+        }
+
         // 读取或创建消息顺序文件
         let orderHandle = await folderHandle.getFileHandle('messages_order.json', { create: true });
         let orderFile = await orderHandle.getFile();
@@ -2133,14 +2225,24 @@ async function openConversationFolder(conversationId) {
 
 // 处理文件选择
 function handleFileSelect(event) {
+    console.log('Handle file select called'); // 调试日志
     const filePreviewArea = document.getElementById('filePreviewArea');
     const files = event.target.files;
+    
+    console.log('Selected files:', files); // 调试日志
     
     // 清空预览区域
     filePreviewArea.innerHTML = '';
     
+    if (!files || files.length === 0) {
+        console.log('No files selected'); // 调试日志
+        filePreviewArea.style.display = 'none';
+        return;
+    }
+
     // 显示选择的文件
     Array.from(files).forEach(file => {
+        console.log('Processing file:', file.name); // 调试日志
         const previewItem = document.createElement('div');
         previewItem.className = 'file-preview-item';
         
@@ -2157,6 +2259,10 @@ function handleFileSelect(event) {
         previewItem.appendChild(removeButton);
         filePreviewArea.appendChild(previewItem);
     });
+
+    // 确保显示预览区域
+    console.log('Showing preview area'); // 调试日志
+    filePreviewArea.style.display = 'block';
 }
 
 // 从选择中移除文件
@@ -2166,15 +2272,38 @@ function removeFileFromSelection(fileToRemove) {
     
     // 创建新的 FileList
     const dt = new DataTransfer();
-    Array.from(fileInput.files)
-        .filter(file => file !== fileToRemove)
-        .forEach(file => dt.items.add(file));
+    const remainingFiles = Array.from(fileInput.files)
+        .filter(file => file !== fileToRemove);
+    
+    remainingFiles.forEach(file => dt.items.add(file));
     
     // 更新文件输入
     fileInput.files = dt.files;
     
-    // 重新显示预览
-    handleFileSelect({ target: fileInput });
+    // 更新预览区域
+    filePreviewArea.innerHTML = '';
+    if (remainingFiles.length > 0) {
+        remainingFiles.forEach(file => {
+            const previewItem = document.createElement('div');
+            previewItem.className = 'file-preview-item';
+            
+            const fileName = document.createElement('span');
+            fileName.className = 'file-preview-name';
+            fileName.textContent = file.name;
+            
+            const removeButton = document.createElement('button');
+            removeButton.className = 'file-preview-remove';
+            removeButton.textContent = '×';
+            removeButton.onclick = () => removeFileFromSelection(file);
+            
+            previewItem.appendChild(fileName);
+            previewItem.appendChild(removeButton);
+            filePreviewArea.appendChild(previewItem);
+        });
+        filePreviewArea.style.display = 'block';
+    } else {
+        filePreviewArea.style.display = 'none';
+    }
 }
 
 // 事件监听
@@ -3259,7 +3388,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 imageEditorInstance.flipY = imageEditorState.flipY;
                                 imageEditorInstance.imageX = imageEditorState.imageX;
                                 imageEditorInstance.imageY = imageEditorState.imageY;
-                                
+                                if (!window.imageEditorInitialized) {
+                                    imageEditorInstance = new ImageEditor();
+                                    window.imageEditorInitialized = true;
+                                }
                                 // 恢复画布大小
                                 imageEditorInstance.setCanvasSize(
                                     imageEditorState.canvasWidth,

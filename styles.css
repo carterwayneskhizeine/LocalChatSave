@@ -737,6 +737,9 @@ textarea {
 
 .file-preview-area {
     margin-bottom: 12px;
+    padding: 0 8px;
+    max-height: 100px;
+    overflow-y: auto;
 }
 
 .file-preview-item {
@@ -747,11 +750,13 @@ textarea {
     border-radius: 4px;
     margin: 0 8px 8px 0;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    border: 1px solid var(--border-color);
 }
 
 .file-preview-name {
     margin-right: 8px;
     font-size: 14px;
+    color: var(--text-color);
 }
 
 .file-preview-remove {
@@ -766,7 +771,7 @@ textarea {
 }
 
 .file-preview-remove:hover {
-    background-color: #ffebee;
+    background-color: var(--hover-color);
 }
 
 .file-icon {
@@ -1045,7 +1050,7 @@ textarea {
     gap: 10px;
     margin-top: 5px;
     font-size: 0.9em;
-    color: var(--secondary-color);
+    color: var(--text-color);
 }
 
 .image-name {
@@ -1058,8 +1063,11 @@ textarea {
 }
 
 .image-resolution {
-    color: var(--secondary-color);
-    font-family: monospace;
+    color: var(--text-color);
+    font-family: inherit;
+    padding: 2px 6px;
+    background-color: transparent;
+    border-radius: 4px;
 }
 
 .image-name-input {
@@ -1653,22 +1661,21 @@ textarea {
 
 /* 分辨率信息样式 */
 .resolution-info {
-    text-align: center;
-    margin: 12px 0;
-    color: var(--text-color);
-    font-size: 14px;
     display: flex;
+    gap: 10px;
+    margin: 10px 0;
     justify-content: center;
-    gap: 20px;
 }
 
 .canvas-resolution,
 .image-resolution {
-    background-color: var(--message-bg);
-    padding: 4px 12px;
+    display: inline-block;
+    padding: 4px 8px;
     border-radius: 4px;
-    border: 1px solid var(--border-color);
-    min-width: 120px;
+    background-color: var(--hover-color);
+    color: var(--text-color);
+    font-size: 14px;
+    font-family: monospace;
 }
 
 .image-resolution {
@@ -1688,7 +1695,7 @@ textarea {
     gap: 10px;
     margin-top: 5px;
     font-size: 0.9em;
-    color: var(--secondary-color);
+    color: var(--text-color);
 }
 
 .chat-image-name {
@@ -1701,10 +1708,10 @@ textarea {
 }
 
 .chat-image-resolution {
-    color: var(--secondary-color);
-    font-family: monospace;
+    color: var(--text-color);
+    font-family: inherit;
     padding: 2px 6px;
-    background-color: var(--hover-color);
+    background-color: transparent;
     border-radius: 4px;
 }
 
