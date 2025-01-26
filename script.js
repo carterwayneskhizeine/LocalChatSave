@@ -2023,6 +2023,27 @@ async function renderMessage(message) {
         editBtn.textContent = isEnglish ? 'Edit' : '编辑';
         editBtn.onclick = () => enterEditMode(message, contentContainer);
         actionContainer.appendChild(editBtn);
+    } else if (message.type === 'file' && message.filename.match(/\.(jpg|jpeg|png|gif)$/)) {
+        // 为图片添加发送按钮
+        const sendToEditorBtn = document.createElement('button');
+        sendToEditorBtn.className = 'message-edit-btn';
+        sendToEditorBtn.textContent = isEnglish ? 'Send' : '发送';
+        sendToEditorBtn.onclick = async () => {
+            // 读取图片文件
+            const fileContent = await readFile(message.filename);
+            const blob = new Blob([fileContent]);
+            const file = new File([blob], message.filename, { type: `image/${message.filename.split('.').pop()}` });
+            
+            // 切换到图片编辑模式
+            switchTool('editor');
+            
+            // 获取ImageEditor实例并加载图片
+            const imageEditor = window.imageEditor;
+            if (imageEditor) {
+                imageEditor.loadImage(file);
+            }
+        };
+        actionContainer.appendChild(sendToEditorBtn);
     }
     
     // 添加删除按钮
@@ -3228,6 +3249,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!imageEditorInstance && editorPanel.offsetParent !== null) {
                         try {
                             imageEditorInstance = new ImageEditor();
+                            window.imageEditor = imageEditorInstance; // 使实例可以全局访问
                             // 如果有保存的状态，恢复它
                             if (imageEditorState) {
                                 imageEditorInstance.image = imageEditorState.image;
@@ -3266,7 +3288,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         imageEditorInstance.drawImage();
                         imageEditorInstance.updateResolutionInfo();
                     }
-                }, 100);
+                }, 0);
                 break;
                 
             case 'calculator':
@@ -3276,27 +3298,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (!calculatorInstance && calculatorPanel.offsetParent !== null) {
                         try {
                             calculatorInstance = new ProportionCalculator();
-                            console.log('比例计算器初始化成功');
                         } catch (error) {
                             console.error('初始化比例计算器失败:', error);
-                            alert('初始化比例计算器失败，请刷新页面重试');
                         }
                     }
-                }, 100);
+                }, 0);
                 break;
         }
     }
     
-    // 为每个按钮添加点击事件
+    // 将工具切换函数暴露给全局
+    window.switchTool = switchTool;
+    
+    // 添加工具切换按钮的点击事件
     toolButtons.forEach(button => {
         button.addEventListener('click', () => {
             const tool = button.dataset.tool;
             switchTool(tool);
         });
     });
-    
-    // 默认显示聊天模式
-    switchTool('chat');
 });
 
 // 初始化应用
