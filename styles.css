@@ -5,8 +5,8 @@
     --background-color: #ffffff;
     --accent-color: #ef233c;
     --text-color: #2b2d42;
-    --sidebar-width: 260px;
-    --message-bg: white;
+    --sidebar-width: 280px;
+    --message-bg: rgb(255, 255, 255);
     --border-color: #e0e0e0;
     --hover-color: #f5f5f5;
     --active-color: #e3e3e3;
@@ -22,7 +22,7 @@
     --background-color: #202124;
     --accent-color: #03dac6;
     --text-color: #e0e0e0;
-    --message-bg: #1e1e1e;
+    --message-bg: #181818;
     --border-color: #333333;
     --hover-color: #2d2d2d;
     --active-color: #3d3d3d;
@@ -46,7 +46,7 @@
     background-color: var(--secondary-color);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 24px;
     cursor: pointer;
     transition: background-color 0.2s;
     display: flex;
@@ -122,7 +122,7 @@ body {
     background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 24px;
     cursor: pointer;
     transition: background-color 0.2s;
 }
@@ -137,7 +137,7 @@ body {
     background-color: var(--secondary-color);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 24px;
     cursor: pointer;
     transition: background-color 0.2s;
 }
@@ -153,7 +153,7 @@ body {
     right: 0;
     background-color: var(--message-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     display: none;
     z-index: 1000;
@@ -209,7 +209,7 @@ body {
     justify-content: space-between;
     padding: 12px;
     margin: 4px 0;
-    border-radius: 5px;
+    border-radius: 24px;
     cursor: pointer;
     transition: background-color 0.2s;
     position: relative;
@@ -265,7 +265,7 @@ body {
     left: calc(var(--sidebar-width) - 8px);
     background-color: var(--message-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     display: none;
     z-index: 1001;
@@ -359,7 +359,7 @@ body {
 .message {
     margin: 16px 0;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 24px;
     background-color: var(--message-bg);
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     width: 100%;
@@ -385,7 +385,7 @@ body {
     font-family: monospace;
     position: relative;
     padding: 12px;
-    border-radius: 4px;
+    border-radius: 24px;
     white-space: pre-wrap;
     word-wrap: break-word;
     word-break: break-all;
@@ -419,7 +419,7 @@ body {
 .message-filename {
     cursor: pointer;
     padding: 2px 4px;
-    border-radius: 3px;
+    border-radius: 24px;
     transition: background-color 0.2s;
     display: flex;
     align-items: center;
@@ -446,7 +446,7 @@ body {
     font-size: 12px;
     padding: 2px 4px;
     border: 1px solid var(--secondary-color);
-    border-radius: 3px;
+    border-radius: 24px;
     background-color: var(--input-bg);
     color: var(--text-color);
     margin-right: 8px;
@@ -462,7 +462,7 @@ body {
 .message-rename-cancel {
     font-size: 12px;
     padding: 2px 6px;
-    border-radius: 3px;
+    border-radius: 24px;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -507,7 +507,7 @@ body {
     background-color: transparent;
     border: 1px solid var(--secondary-color);
     color: var(--text-color);
-    border-radius: 4px;
+    border-radius: 24px;
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s;
@@ -547,7 +547,7 @@ body {
     padding: 8px;
     margin: 0;
     border: 1px solid var(--secondary-color);
-    border-radius: 4px;
+    border-radius: 24px;
     background-color: var(--input-bg);
     color: var(--text-color);
     font-family: inherit;
@@ -564,7 +564,7 @@ body {
 .edit-save-btn,
 .edit-cancel-btn {
     padding: 4px 12px;
-    border-radius: 4px;
+    border-radius: 24px;
     cursor: pointer;
     font-size: 12px;
     transition: all 0.2s;
@@ -597,7 +597,7 @@ body {
 
 .input-container {
     background-color: var(--input-bg);
-    border-radius: 8px;
+    border-radius: 24px;
     padding: 12px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     transition: padding 0.3s ease;
@@ -636,7 +636,7 @@ textarea {
     background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 24px;
     cursor: pointer;
     overflow: hidden;
     transition: background-color 0.2s;
@@ -661,7 +661,7 @@ textarea {
     background-color: var(--primary-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 24px;
     cursor: pointer;
 }
 
@@ -708,7 +708,7 @@ textarea {
     margin: 8px 0;
     padding: 8px;
     background-color: #ffffff;
-    border-radius: 4px;
+    border-radius: 24px;
 }
 
 .video-preview {
@@ -727,7 +727,7 @@ textarea {
 
 ::-webkit-scrollbar-thumb {
     background: var(--border-color);
-    border-radius: 8px;
+    border-radius: 24px;
     border: 8px solid var(--secondary-color);
 }
 
@@ -747,7 +747,7 @@ textarea {
     align-items: center;
     background-color: var(--preview-item-bg);
     padding: 6px 12px;
-    border-radius: 4px;
+    border-radius: 24px;
     margin: 0 8px 8px 0;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     border: 1px solid var(--border-color);
@@ -766,7 +766,7 @@ textarea {
     cursor: pointer;
     padding: 2px 6px;
     font-size: 14px;
-    border-radius: 3px;
+    border-radius: 24px;
     transition: background-color 0.2s;
 }
 
@@ -786,7 +786,7 @@ textarea {
     align-items: center;
     padding: 4px 8px;
     background-color: var(--hover-color);
-    border-radius: 4px;
+    border-radius: 24px;
     transition: background-color 0.2s;
 }
 
@@ -801,7 +801,7 @@ textarea {
     background-color: transparent;
     border: 1px solid var(--secondary-color);
     color: var(--text-color);
-    border-radius: 5px;
+    border-radius: 24px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -838,7 +838,7 @@ textarea {
     width: 800px;
     height: 600px;
     background-color: var(--message-bg);
-    border-radius: 12px;
+    border-radius: 24px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
@@ -867,7 +867,7 @@ textarea {
     font-size: 24px;
     cursor: pointer;
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: 24px;
     transition: background-color 0.2s;
 }
 
@@ -902,7 +902,7 @@ textarea {
     gap: 25px;
     padding: 8px 16px;
     background-color: var(--message-bg);
-    border-radius: 8px;
+    border-radius: 24px;
     margin-bottom: 8px;
     position: relative;
 }
@@ -932,7 +932,7 @@ textarea {
     background-color: var(--secondary-color);
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 24px;
     cursor: pointer;
     transition: all 0.2s;
     font-size: 14px;
@@ -961,7 +961,7 @@ textarea {
     background-color: var(--secondary-color);
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 24px;
     cursor: pointer;
     transition: background-color 0.2s;
 }
@@ -972,7 +972,7 @@ textarea {
     right: 0;
     background-color: var(--message-bg);
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     display: none;
     z-index: 1000;
@@ -986,15 +986,15 @@ textarea {
 
 .expand-btn {
     position: fixed;
-    top: 50px;
-    right: 20px;
+    top: 80px;
+    right: 18px;
     background: none;
     border: none;
     color: var(--text-color);
     font-size: 20px;
     cursor: pointer;
     padding: 8px;
-    border-radius: 4px;
+    border-radius: 24px;
     transition: background-color 0.2s;
     z-index: 1000;
 }
@@ -1007,22 +1007,22 @@ textarea {
 .message video {
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: 5px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     margin-top: 8px;
 }
 
 .sidebar-toggle-btn {
     position: fixed;
-    top: 50px;
-    left: calc(var(--sidebar-width) + 20px);
+    bottom: 30px;
+    left: calc(var(--sidebar-width) + 5px);
     background: none;
     border: none;
     color: var(--text-color);
     font-size: 20px;
     cursor: pointer;
     padding: 8px;
-    border-radius: 4px;
+    border-radius: 24px;
     transition: all 0.3s ease;
     z-index: 1000;
 }
@@ -1041,7 +1041,7 @@ textarea {
 }
 
 .sidebar.hidden + .main-content .sidebar-toggle-btn {
-    left: 20px;
+    left: 0px;
 }
 
 .image-info {
@@ -1074,7 +1074,7 @@ textarea {
     font-size: 12px;
     padding: 2px 4px;
     border: 1px solid var(--secondary-color);
-    border-radius: 3px;
+    border-radius: 24px;
     background-color: var(--input-bg);
     color: var(--text-color);
     margin-right: 8px;
@@ -1089,7 +1089,7 @@ textarea {
 .image-rename-cancel {
     font-size: 12px;
     padding: 2px 6px;
-    border-radius: 3px;
+    border-radius: 24px;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -1139,7 +1139,7 @@ textarea {
     color: var(--secondary-color);
     background-color: var(--hover-color);
     padding: 2px 6px;
-    border-radius: 3px;
+    border-radius: 24px;
     margin-left: 4px;
 }
 
@@ -1164,7 +1164,7 @@ textarea {
     width: 800px;
     height: 600px;
     background-color: var(--message-bg);
-    border-radius: 12px;
+    border-radius: 24px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
@@ -1193,7 +1193,7 @@ textarea {
     font-size: 24px;
     cursor: pointer;
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: 24px;
     transition: background-color 0.2s;
 }
 
@@ -1211,7 +1211,7 @@ textarea {
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 24px;
     cursor: pointer;
     transition: background-color 0.2s;
     color: var(--text-color);
@@ -1253,7 +1253,7 @@ textarea {
 .function-switch button {
     padding: 8px 16px;
     border: none;
-    border-radius: 20px;
+    border-radius: 24px;
     background-color: var(--hover-color);
     color: var(--text-color);
     cursor: pointer;
@@ -1278,7 +1278,7 @@ textarea {
     max-width: 720px;
     width: 100%;
     aspect-ratio: auto;
-    border-radius: 12px;
+    border-radius: 5px;
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -1301,7 +1301,7 @@ textarea {
     align-items: center;
     background-color: var(--message-bg);
     border: 2px dashed var(--border-color);
-    border-radius: 12px;
+    border-radius: 5px;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -1320,10 +1320,11 @@ textarea {
 /* 按钮行样式 */
 .button-row {
     display: flex;
-    gap: 8px;
-    justify-content: center;
-    margin: 16px 0;
     align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    justify-content: center;
+    padding: 0 16px;
 }
 
 .button-row .dropdown {
@@ -1335,7 +1336,7 @@ textarea {
     height: 40px;
     padding: 0 16px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 24px;
     background-color: var(--message-bg);
     color: var(--text-color);
     cursor: pointer;
@@ -1355,7 +1356,7 @@ textarea {
 .dropdown-btn {
     padding: 8px 16px;
     border: none;
-    border-radius: 8px;
+    border-radius: 24px;
     background-color: var(--message-bg);
     color: var(--text-color);
     cursor: pointer;
@@ -1373,7 +1374,7 @@ textarea {
     min-width: 120px;
     background-color: var(--message-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     display: none;
     z-index: 1000;
@@ -1433,7 +1434,7 @@ textarea {
     width: 80px;
     padding: 8px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 24px;
     background-color: var(--input-bg);
     color: var(--text-color);
 }
@@ -1441,7 +1442,7 @@ textarea {
 .control-group button {
     padding: 8px 16px;
     border: none;
-    border-radius: 8px;
+    border-radius: 24px;
     background-color: var(--primary-color);
     color: white;
     cursor: pointer;
@@ -1459,7 +1460,7 @@ textarea {
 .control-group .dropdown-btn {
     padding: 8px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 24px;
     background-color: var(--message-bg);
     color: var(--text-color);
     cursor: pointer;
@@ -1478,7 +1479,7 @@ textarea {
     min-width: 120px;
     background-color: var(--message-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     display: none;
     z-index: 1000;
@@ -1527,7 +1528,7 @@ textarea {
     margin: 40px auto;
     padding: 20px;
     background-color: var(--message-bg);
-    border-radius: 12px;
+    border-radius: 24px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -1541,7 +1542,7 @@ textarea {
 .ratio-btn {
     padding: 8px 16px;
     border: none;
-    border-radius: 20px;
+    border-radius: 24px;
     background-color: var(--hover-color);
     color: var(--text-color);
     cursor: pointer;
@@ -1570,7 +1571,7 @@ textarea {
     flex: 1;
     padding: 8px;
     border: 1px solid var(--border-color);
-    border-radius: 4px;
+    border-radius: 24px;
     background-color: var(--input-bg);
     color: var(--text-color);
 }
@@ -1671,7 +1672,7 @@ textarea {
 .image-resolution {
     display: inline-block;
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: 24px;
     background-color: var(--hover-color);
     color: var(--text-color);
     font-size: 14px;
@@ -1712,14 +1713,14 @@ textarea {
     font-family: inherit;
     padding: 2px 6px;
     background-color: transparent;
-    border-radius: 4px;
+    border-radius: 24px;
 }
 
 .icon-button {
     width: 40px;
     height: 40px;
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 24px;
     background-color: var(--message-bg);
     color: var(--text-color);
     font-size: 18px;
@@ -1732,4 +1733,25 @@ textarea {
 
 .icon-button:hover {
     background-color: var(--hover-color);
+}
+
+.editor-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 24px;
+    background-color: var(--hover-color);
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+    margin-right: 8px;
+}
+
+.editor-button:hover {
+    background-color: var(--active-color);
+}
+
+.editor-button:active {
+    background-color: var(--active-color);
+    transform: translateY(1px);
 }

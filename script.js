@@ -21,6 +21,15 @@ document.body.insertAdjacentHTML('beforeend', `
     </div>
 `);
 
+// 添加全局处理函数
+const handleDropZoneClick = () => {
+    document.getElementById('fileInput').click();
+};
+
+const handleImportClick = () => {
+    document.getElementById('fileInput').click();
+};
+
 class ImageEditor {
     constructor() {
         this.canvas = document.getElementById('canvas');
@@ -80,40 +89,39 @@ class ImageEditor {
     setupEventListeners() {
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('fileInput');
+        const importImage = document.getElementById('importImage');
 
         // 使用唯一ID确保只初始化一次
         if (!window.fileInputInitialized) {
-            const newFileInput = fileInput.cloneNode(true); // 使用true复制所有属性
+            const newFileInput = fileInput.cloneNode(true);
             fileInput.parentNode.replaceChild(newFileInput, fileInput);
             
             newFileInput.addEventListener('change', (e) => {
                 const activePanel = document.querySelector('.tool-panel.active, .chat-container.active');
                 if (activePanel.classList.contains('editor-panel')) {
                     this.handleFileSelect(e);
-                    e.target.value = ''; // 只在编辑器模式下清空
+                    e.target.value = '';
                 } else {
-                    handleFileSelect(e); // 聊天模式的处理
+                    handleFileSelect(e);
                 }
             });
 
             window.fileInputInitialized = true;
         }
 
-        // 绑定点击事件到编辑器中的导入按钮
-        const importImage = document.getElementById('importImage');
-        if (importImage) {
-            importImage.addEventListener('click', () => {
-                document.getElementById('fileInput').click();
-            });
-        }
-
-        // 绑定拖放区域的点击事件
+        // 移除旧的事件监听器并重新绑定
         if (dropZone) {
-            dropZone.addEventListener('click', () => {
-                document.getElementById('fileInput').click();
-            });
+            dropZone.removeEventListener('click', handleDropZoneClick);
+            dropZone.addEventListener('click', handleDropZoneClick);
         }
 
+        // 绑定导入按钮点击事件
+        if (importImage) {
+            importImage.removeEventListener('click', handleImportClick);
+            importImage.addEventListener('click', handleImportClick);
+        }
+
+        // 拖放相关事件
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -770,25 +778,6 @@ window.addEventListener('DOMContentLoaded', () => {
 // 初始化应用
 async function initApp() {
     try {
-        // 添加文件选择事件监听
-        // const fileInput = document.getElementById('fileInput');
-        // if (fileInput) {
-        //     fileInput.addEventListener('change', (e) => {
-        //         const activePanel = document.querySelector('.tool-panel.active, .chat-container.active');
-        //         if (activePanel && activePanel.classList.contains('editor-panel') && imageEditorInstance) {
-        //             // 如果当前是图片编辑模式且实例存在，使用图片编辑器的处理方法
-        //             imageEditorInstance.handleFileSelect(e);
-        //         } else {
-        //             // 否则使用聊天功能的文件处理方法
-        //             handleFileSelect(e);
-        //         }
-        //         // 清空文件输入，确保同一文件可以重复选择
-        //         e.target.value = '';
-        //     });
-        // }
-
-        // 不再需要重复添加文件选择事件监听器，因为已经在ImageEditor类中处理了
-        
         // 添加选择存储位置按钮和下拉菜单
         const selectDirContainer = document.getElementById('selectDirContainer');
         
@@ -3373,54 +3362,58 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             case 'editor':
                 editorPanel.classList.add('active');
-                // 确保面板可见后再初始化
-                setTimeout(() => {
-                    if (!imageEditorInstance && editorPanel.offsetParent !== null) {
-                        try {
-                            imageEditorInstance = new ImageEditor();
-                            window.imageEditor = imageEditorInstance; // 使实例可以全局访问
-                            // 如果有保存的状态，恢复它
-                            if (imageEditorState) {
-                                imageEditorInstance.image = imageEditorState.image;
-                                imageEditorInstance.scale = imageEditorState.scale;
-                                imageEditorInstance.rotation = imageEditorState.rotation;
-                                imageEditorInstance.flipX = imageEditorState.flipX;
-                                imageEditorInstance.flipY = imageEditorState.flipY;
-                                imageEditorInstance.imageX = imageEditorState.imageX;
-                                imageEditorInstance.imageY = imageEditorState.imageY;
+                // 如果切换到编辑器面板，初始化或更新图片编辑器
+                if (editorPanel) {
+                    setTimeout(() => {
+                        if (!imageEditorInstance && editorPanel.offsetParent !== null) {
+                            try {
+                                // 检查是否已经初始化
                                 if (!window.imageEditorInitialized) {
                                     imageEditorInstance = new ImageEditor();
+                                    window.imageEditor = imageEditorInstance;
                                     window.imageEditorInitialized = true;
+
+                                    // 如果有保存的状态，恢复它
+                                    if (imageEditorState) {
+                                        imageEditorInstance.image = imageEditorState.image;
+                                        imageEditorInstance.scale = imageEditorState.scale;
+                                        imageEditorInstance.rotation = imageEditorState.rotation;
+                                        imageEditorInstance.flipX = imageEditorState.flipX;
+                                        imageEditorInstance.flipY = imageEditorState.flipY;
+                                        imageEditorInstance.imageX = imageEditorState.imageX;
+                                        imageEditorInstance.imageY = imageEditorState.imageY;
+
+                                        // 恢复画布大小
+                                        imageEditorInstance.setCanvasSize(
+                                            imageEditorState.canvasWidth,
+                                            imageEditorState.canvasHeight
+                                        );
+                                        
+                                        // 如果有图片，更新显示
+                                        if (imageEditorInstance.image) {
+                                            document.getElementById('drop-zone').style.display = 'none';
+                                            imageEditorInstance.drawImage();
+                                            imageEditorInstance.updateResolutionInfo();
+                                        }
+                                    }
+                                    
+                                    // 添加resize监听
+                                    window.addEventListener('resize', () => {
+                                        if (imageEditorInstance && editorPanel.classList.contains('active')) {
+                                            imageEditorInstance.handleResize();
+                                        }
+                                    });
                                 }
-                                // 恢复画布大小
-                                imageEditorInstance.setCanvasSize(
-                                    imageEditorState.canvasWidth,
-                                    imageEditorState.canvasHeight
-                                );
-                                
-                                // 如果有图片，更新显示
-                                if (imageEditorInstance.image) {
-                                    document.getElementById('drop-zone').style.display = 'none';
-                                    imageEditorInstance.drawImage();
-                                    imageEditorInstance.updateResolutionInfo();
-                                }
+                            } catch (error) {
+                                console.error('初始化图片编辑器失败:', error);
                             }
-                            
-                            // 添加resize监听
-                            window.addEventListener('resize', () => {
-                                if (imageEditorInstance && editorPanel.classList.contains('active')) {
-                                    imageEditorInstance.handleResize();
-                                }
-                            });
-                        } catch (error) {
-                            console.error('初始化图片编辑器失败:', error);
+                        } else if (imageEditorInstance) {
+                            // 如果实例已存在，只需要重新绘制
+                            imageEditorInstance.drawImage();
+                            imageEditorInstance.updateResolutionInfo();
                         }
-                    } else if (imageEditorInstance) {
-                        // 如果实例已存在，只需要重新绘制
-                        imageEditorInstance.drawImage();
-                        imageEditorInstance.updateResolutionInfo();
-                    }
-                }, 0);
+                    }, 0);
+                }
                 break;
                 
             case 'calculator':
