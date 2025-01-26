@@ -4,7 +4,7 @@ let conversations = [];
 let directoryHandle = null;
 const CONFIG_FILE = 'chat_config.json';
 let isDarkMode = true;  // 默认为夜间模式
-let isEnglish = false; // 添加语言设置变量
+let isEnglish = true; // 默认为英文
 let fileInputInitialized = false;
 let imageEditorInstance = null;
 
@@ -13,7 +13,7 @@ document.body.insertAdjacentHTML('beforeend', `
     <div id="subfoldersModal" class="subfolders-modal">
         <div class="subfolders-window">
             <div class="subfolders-header">
-                <div class="subfolders-title">${isEnglish ? 'All Subfolders' : '所有子文件夹'}</div>
+                <div class="subfolders-title">All Subfolders</div>
                 <button class="subfolders-close" onclick="closeSubfoldersModal()">×</button>
             </div>
             <div id="subfoldersContent" class="subfolders-content"></div>
@@ -55,6 +55,12 @@ class ImageEditor {
         this.setupEventListeners();
         this.handleThemeChange();
         this.updateResolutionInfo(); // 初始化时更新分辨率信息
+        
+        // 确保初始化时使用正确的语言
+        setTimeout(() => {
+            updateUILanguage();
+            console.log('ImageEditor initialized with language:', isEnglish ? 'English' : 'Chinese'); // 调试日志
+        }, 0);
     }
 
     initializeCanvas() {
@@ -549,19 +555,12 @@ class ImageEditor {
 
     // 添加更新分辨率信息的方法
     updateResolutionInfo() {
-        // 更新画布分辨率
         if (this.canvasResolutionEl) {
-            this.canvasResolutionEl.textContent = `画布: ${this.canvas.width} × ${this.canvas.height}`;
+            this.canvasResolutionEl.textContent = `${isEnglish ? 'Canvas' : '画布'}: ${this.canvas.width} × ${this.canvas.height}`;
         }
-        
-        // 更新图片分辨率
-        if (this.imageResolutionEl) {
-            if (this.image) {
-                this.imageResolutionEl.textContent = `图片: ${this.image.width} × ${this.image.height}`;
-                this.imageResolutionEl.style.display = 'inline-block';
-            } else {
-                this.imageResolutionEl.style.display = 'none';
-            }
+        if (this.imageResolutionEl && this.image) {
+            this.imageResolutionEl.textContent = `${isEnglish ? 'Image' : '图片'}: ${this.image.width} × ${this.image.height}`;
+            this.imageResolutionEl.style.display = 'inline-block';
         }
     }
 
@@ -2592,8 +2591,7 @@ function toggleSettings() {
         
         // 重新绑定主题切换按钮事件
         document.getElementById('themeToggleBtn').onclick = toggleTheme;
-        // 重新绑定语言切换按钮事件
-        document.getElementById('langToggleBtn').onclick = toggleLanguage;
+        // 移除语言切换按钮事件绑定
     }
 }
 
@@ -3446,3 +3444,130 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 初始化应用
 initApp(); 
+
+// 添加语言切换函数
+function updateUILanguage() {
+    console.log('Updating UI language, isEnglish:', isEnglish); // 调试日志
+
+    // 更新body的语言类
+    document.body.classList.toggle('en-mode', isEnglish);
+    
+    // 更新语言切换按钮
+    const langBtn = document.getElementById('langToggleBtn');
+    if (langBtn) {
+        langBtn.textContent = isEnglish ? 'CH' : 'EN';
+    }
+
+    // 功能切换按钮文本
+    const chatButton = document.querySelector('[data-tool="chat"]');
+    const editorButton = document.querySelector('[data-tool="editor"]');
+    const calculatorButton = document.querySelector('[data-tool="calculator"]');
+    
+    if (chatButton) chatButton.textContent = isEnglish ? 'Chat Mode' : '聊天模式';
+    if (editorButton) editorButton.textContent = isEnglish ? 'Image Editor' : '图片编辑';
+    if (calculatorButton) calculatorButton.textContent = isEnglish ? 'Ratio Calculator' : '比例计算';
+
+    // 图片编辑页面文本
+    const dropZoneText = document.querySelector('#drop-zone p');
+    if (dropZoneText) {
+        dropZoneText.textContent = isEnglish ? 'Drop image here or click to upload' : '拖放图片到此处或点击上传';
+    }
+
+    // 分辨率信息文本
+    const canvasResolution = document.querySelector('.canvas-resolution');
+    const imageResolution = document.querySelector('.image-resolution');
+    if (canvasResolution) {
+        const [, dimensions] = canvasResolution.textContent.split(':');
+        const [width, height] = dimensions ? dimensions.trim().split('×') : ['', ''];
+        canvasResolution.textContent = `${isEnglish ? 'Canvas' : '画布'}: ${width.trim()} × ${height.trim()}`;
+    }
+    if (imageResolution) {
+        const [, dimensions] = imageResolution.textContent.split(':');
+        const [width, height] = dimensions ? dimensions.trim().split('×') : ['', ''];
+        imageResolution.textContent = `${isEnglish ? 'Image' : '图片'}: ${width.trim()} × ${height.trim()}`;
+    }
+
+    // 按钮文本
+    const importButton = document.getElementById('importImage');
+    const presetResButton = document.getElementById('presetResolutions');
+    const downloadJPG = document.getElementById('downloadJPG');
+    const downloadPNG = document.getElementById('downloadPNG');
+    const presetAspectButton = document.querySelector('.dropdown-btn');
+    const setResolutionBtn = document.getElementById('setResolution');
+    
+    if (importButton) {
+        importButton.textContent = isEnglish ? 'Import' : '导入';
+        console.log('Import button text updated:', importButton.textContent); // 调试日志
+    }
+    if (presetResButton) presetResButton.textContent = isEnglish ? 'Res' : '预设分辨率';
+    if (downloadJPG) downloadJPG.textContent = isEnglish ? 'JPG Format' : 'JPG格式';
+    if (downloadPNG) downloadPNG.textContent = isEnglish ? 'PNG Format' : 'PNG格式';
+    if (presetAspectButton) presetAspectButton.textContent = isEnglish ? 'AR' : '预设比例';
+    if (setResolutionBtn) setResolutionBtn.textContent = isEnglish ? 'Apply' : '应用';
+
+    // 宽高输入框标签和占位符
+    const widthLabels = document.querySelectorAll('.width-label');
+    const heightLabels = document.querySelectorAll('.height-label');
+    const widthInputs = document.querySelectorAll('input[type="number"][placeholder*="宽度"], input[type="number"][placeholder*="width"]');
+    const heightInputs = document.querySelectorAll('input[type="number"][placeholder*="高度"], input[type="number"][placeholder*="height"]');
+    
+    widthLabels.forEach(label => {
+        label.textContent = isEnglish ? 'Width' : '宽度';
+    });
+    heightLabels.forEach(label => {
+        label.textContent = isEnglish ? 'Height' : '高度';
+    });
+    widthInputs.forEach(input => {
+        input.placeholder = isEnglish ? 'Enter width' : '输入宽度';
+    });
+    heightInputs.forEach(input => {
+        input.placeholder = isEnglish ? 'Enter height' : '输入高度';
+    });
+
+    // 比例计算器标签
+    const calculatorPanel = document.querySelector('.calculator-panel');
+    if (calculatorPanel) {
+        const calcWidthLabels = calculatorPanel.querySelectorAll('.width-label');
+        const calcHeightLabels = calculatorPanel.querySelectorAll('.height-label');
+        const ratioALabel = calculatorPanel.querySelector('.ratio-a-label');
+        const ratioBLabel = calculatorPanel.querySelector('.ratio-b-label');
+        
+        calcWidthLabels.forEach(label => {
+            label.textContent = isEnglish ? 'Width' : '宽度';
+        });
+        calcHeightLabels.forEach(label => {
+            label.textContent = isEnglish ? 'Height' : '高度';
+        });
+        if (ratioALabel) ratioALabel.textContent = isEnglish ? 'Ratio A' : '比例 A';
+        if (ratioBLabel) ratioBLabel.textContent = isEnglish ? 'Ratio B' : '比例 B';
+    }
+
+    // 更新子文件夹模态框标题
+    const subfoldersTitle = document.querySelector('.subfolders-title');
+    if (subfoldersTitle) {
+        subfoldersTitle.textContent = isEnglish ? 'All Subfolders' : '所有子文件夹';
+    }
+}
+
+// 在页面加载时初始化语言设置
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Content Loaded'); // 调试日志
+    
+    // 从localStorage读取语言设置，如果没有设置则默认为英文（true）
+    const savedLanguage = localStorage.getItem('isEnglish');
+    isEnglish = savedLanguage === null ? true : savedLanguage === 'true';
+    console.log('Initial language setting:', isEnglish); // 调试日志
+    
+    // 初始化语言切换按钮
+    const langBtn = document.getElementById('langToggleBtn');
+    if (langBtn) {
+        // 设置初始文本（当前是英文时显示CH，当前是中文时显示EN）
+        langBtn.textContent = isEnglish ? 'CH' : 'EN';
+    }
+    
+    // 初始更新UI语言
+    updateUILanguage();
+});
+
+// 移除语言切换处理函数
+// ... existing code ...
